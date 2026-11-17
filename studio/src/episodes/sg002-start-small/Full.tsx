@@ -10,7 +10,7 @@ import {S2, S2L, S2R, Over2} from './S2';
 import {S3, S3F, Over3} from './S3';
 import {S4, S4F, Over4} from './S4';
 
-export const SG002_FPS = 30;
+export const SG002_FPS = 60;
 export const SG002_SECONDS = 33.5;
 export const SG002_FRAMES = Math.round(SG002_SECONDS * SG002_FPS);
 
