@@ -11,6 +11,9 @@ description: Production workflow for STEPGLOW (@Stepglow) — an English YouTube
 Владелец пишет по-русски, ролики — на английском, **без озвучки** (музыка + текст в кадре).
 Образец выпуска — **NC001** «Work smart over hard»: `episodes/nc001-work-smart/` (разбор эталона
 `reference.md`, раскадровка `storyboard.md`, поля `youtube.md`) и `studio/src/episodes/nc001-work-smart/`.
+Второй — **SG002** «Great things always start small» (`episodes/sg002-start-small/`,
+`studio/src/episodes/sg002-start-small/`): костёр, гора со ступенями, цепочка доминошек. Новый выпуск —
+своя папка, 3D-набор импортируется из `../nc001-work-smart/` (`kit3d`, `anim`, `looks`, `world`).
 
 ## Правила владельца (каждое уже стоило переделки)
 
@@ -35,7 +38,7 @@ description: Production workflow for STEPGLOW (@Stepglow) — an English YouTube
 | # | Шаг | Как |
 |---|---|---|
 | 1 | Эталон | ролик в scratchpad (в git не кладём). Сцены: `ffmpeg -vf "fps=6,crop=…,scale=300:-1,drawtext=…,tile=8x4"` по каждой сцене с подписью времени; склейки — по средней яркости кадров (затемнения). Музыка: спектр `showspectrumpic`, сетка бита — спектральный поток + автокорреляция (NC001: дроп 14,51 с, бит 0,6325 с). Итог → `episodes/<ep>/reference.md` (таблица сцен: время · текст · действие; звук) |
-| 2 | Варианты стиля | пробные кадры двух сцен в 4–6 стилях (`looks.ts` — стиль = набор чисел) → лист в `review/<ep>/styles/` → выбор владельца |
+| 2 | Варианты стиля | пробные кадры двух сцен в 4–6 стилях (`looks.ts` — стиль = набор чисел) → лист в `review/<ep>/styles/` → выбор владельца. Стиль канала уже выбран (Inner Light) — для новых выпусков этот шаг пропускаем, если владелец не просит другой |
 | 3 | Раскадровка | `episodes/<ep>/storyboard.md`: сцена · время · что происходит · что добавили сверх эталона |
 | 4 | Музыка | трек → `studio/public/<ep>/music.m4a` (`ffmpeg -vn -c:a copy`); сетку бита — в `anim.ts` (`BEAT`, `DROP`, `beat(k)`) |
 | 5 | Сцены | `S1.tsx…S6.tsx`: каждая экспортирует `{from, to}`, `camN(t)`, `WorldN` (3D) и `OverN` (надписи); `Full.tsx` — список `SCENES`, затемнение между сценами `darkness(t)`, `Watermark`, `Audio`. **Все тайминги — от бита** `beat(k)`, а не на глаз |
@@ -61,6 +64,8 @@ description: Production workflow for STEPGLOW (@Stepglow) — an English YouTube
     руки, `pelvisY` для сидения/висения), IK колени/локти (`elbowF/B`, `kneeF/B`), `dir`, `yaw`, `s`,
     `energy` (яркость огонька), `tint` (цвет огонька), `gy` (сдвиг градиента, когда поза поднимается),
     `children` — пропсы в локальных координатах героя. `reach(pose, body, x, y)` — рука к точке.
+- **Камера** `Cam` умеет `cz` (глубина точки взгляда) и `yaw` (облёт вокруг точки, градусы) — для сцен,
+  уходящих в глубину (SG002: цепочка доминошек по диагонали). Без них камера смотрит вдоль −z как раньше.
 - `looks.ts` — стили (`core` = Inner Light), материалы героя `Cast`, цвета провала/победы.
 - `anim.ts` — сетка бита, easing (`ss`, `easeOut`, `back`, `wobble`, `pulse`), `poseAt` (ключи поз),
   `mixPose`, `gait` (ходьба/бег на месте), `STAND`.
@@ -68,6 +73,11 @@ description: Production workflow for STEPGLOW (@Stepglow) — an English YouTube
   `Mug`, `Trophy`, `mixHex`.
 - Сцены NC001: `S1` (копьё против удочек), `S2` (графики-башни), `S3` (стена → отъезд к лестнице «The Luck:»),
   `S4` (куб → скруглённый куб → шар), `S5` (лестницы и маленькие ступеньки), `S6` (FAIL ×1…×100 → WIN).
+- SG002 добавил переиспользуемое: `fire.tsx` (`Campfire` — шейдер пламени с шумом, искры, дым, угли;
+  `warm`/`chill` — фарфор, согретый огнём / замёрзший), `chain.ts` (цепочка доминошек: размеры ×1,6,
+  падение с настоящим касанием следующей, `tilts(t)`), `dominoes.tsx` (`Domino` с точками, которые
+  загораются золотом), `rig.ts` (`toWorld` — точка руки героя в мир, `sitPose`). Сцена с `cut: true`
+  в `Full.tsx` начинается склейкой, без затемнения.
 - Оформление — `studio/src/channels/stepglow/Brand.tsx`: `SG-AvatarA/B/C`, `SG-BannerA/B/C`,
   `SG-Watermark`, компонент `Watermark`.
 
@@ -84,4 +94,9 @@ description: Production workflow for STEPGLOW (@Stepglow) — an English YouTube
 - **Хэндлы YouTube:** `curl -A Mozilla/5.0 https://www.youtube.com/@<name>` → 404 = свободен
   (контроль: заведомо занятый даёт 200); плюс поиск в интернете по имени.
 - **vidIQ** может быть без кредитов — тогда поля YouTube подбирать вручную и сказать об этом владельцу.
+- **Сетка бита:** автокорреляция может выдать 1,5 бита (SG002: 0,952 вместо 0,634) — проверять по
+  интервалам между сильными онсетами (они идут через 4 бита) и подгонять `BEAT` по первому и последнему.
+- **Белые предметы + bloom = пересвет** (доминошки SG002): `emit` ≤ 0,8 и верх цвета не чисто белый;
+  аддитивные `Glow` поверх белого держать слабыми (a ≤ 0,1).
+- **Крупный план** с `fov` 26 и `viewH` < 2 — герой между камерой и точкой взгляда раздувается на весь кадр; держать `viewH` ≈ 2,9.
 - **Прерванная правка** (владелец остановил вызов) — проверить `git status` и не повторять вслепую.

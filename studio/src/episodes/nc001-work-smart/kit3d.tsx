@@ -28,15 +28,18 @@ font('Nunito', 'nunito-latin-900-normal', '900');
 /* ───────────────────────── camera ───────────────────────── */
 
 /** aspect: frame width / height (default the 1080×1920 Short) */
-export type Cam = {viewH: number; cy: number; cx?: number; pitch?: number; fov?: number; aspect?: number};
+/** cz: depth of the point the camera looks at; yaw: orbit around that point, degrees (+ = camera moves to +x) */
+export type Cam = {viewH: number; cy: number; cx?: number; cz?: number; pitch?: number; yaw?: number; fov?: number; aspect?: number};
 
 export const makeCamera = (c: Cam) => {
   const fov = c.fov ?? 16;
-  const cam = new THREE.PerspectiveCamera(fov, c.aspect ?? W / H, 0.1, 400);
+  const cam = new THREE.PerspectiveCamera(fov, c.aspect ?? W / H, 0.1, 600);
   const d = c.viewH / 2 / Math.tan((fov * Math.PI) / 360);
   const p = ((c.pitch ?? 4) * Math.PI) / 180;
-  cam.position.set(c.cx ?? 0, c.cy + d * Math.sin(p), d * Math.cos(p));
-  cam.lookAt(c.cx ?? 0, c.cy, 0);
+  const y = ((c.yaw ?? 0) * Math.PI) / 180;
+  const cz = c.cz ?? 0;
+  cam.position.set((c.cx ?? 0) + d * Math.cos(p) * Math.sin(y), c.cy + d * Math.sin(p), cz + d * Math.cos(p) * Math.cos(y));
+  cam.lookAt(c.cx ?? 0, c.cy, cz);
   cam.updateMatrixWorld();
   cam.updateProjectionMatrix();
   return cam;
@@ -512,7 +515,7 @@ const Backdrop: React.FC<{cam: Cam}> = ({cam}) => {
   );
   // a camera-facing card far behind the stage
   const c = makeCamera(cam);
-  const d = c.position.length() + 30;
+  const d = Math.max(c.position.length(), c.position.distanceTo(new THREE.Vector3(cam.cx ?? 0, cam.cy, cam.cz ?? 0))) + 30;
   const hh = 2 * Math.tan((c.fov * Math.PI) / 360) * d * 1.02;
   const dirv = new THREE.Vector3();
   c.getWorldDirection(dirv);
