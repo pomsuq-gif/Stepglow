@@ -76,4 +76,4 @@
 | Код | Тема | Где | Статус |
 |---|---|---|---|
 | NC001 | Work smart over hard (6 уроков, эталон SIMPLY ANIMATED) | `episodes/nc001-work-smart/`, `studio/src/episodes/nc001-work-smart/` | готов: `review/nc001/NC001-final-wm.mp4` (33,5 с, 1080×1920, 30 к/с, −14 LUFS, со знаком), поля `youtube.md`, раскадровка `storyboard.md` |
-| SG002 | Great things always start small (костёр · гора · доминошки, эталон https://youtube.com/shorts/MYjL0aPNzVA) | `episodes/sg002-start-small/`, `studio/src/episodes/sg002-start-small/` | v2 (переделка по замечаниям) `review/sg002/SG002-v2.mp4`; поля `youtube.md`, раскадровка `storyboard.md` |
+| SG002 | Great things always start small (костёр · гора · доминошки, эталон https://youtube.com/shorts/MYjL0aPNzVA) | `episodes/sg002-start-small/`, `studio/src/episodes/sg002-start-small/` | готов: `review/sg002/SG002-final.mp4` (1080×1920, 60 к/с, 33,5 с, −10 LUFS, со знаком); поля `youtube.md`, раскадровка `storyboard.md` |

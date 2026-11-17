@@ -13,10 +13,10 @@ for ((i=0; i<N; i++)); do
   # RESUME=1 keeps chunks already rendered (delete a part to re-render just that range)
   if [[ -n "${RESUME:-}" && -s "$F" ]]; then echo "chunk $i: keep"; continue; fi
   echo "chunk $i: frames $A-$B"
-  npx remotion render src/index.ts "$ID" "$F" --frames="$A-$B" --muted --codec=h264 --crf=17 --gl=swangle --log=error
+  npx remotion render src/index.ts "$ID" "$F" --frames="$A-$B" --muted --codec=h264 --crf=17 --gl=swangle --timeout=120000 --log=error
 done
 ffmpeg -v error -y -f concat -safe 0 -i "$DIR/list.txt" -c copy "$DIR/video.mp4"
-npx remotion render src/index.ts "$ID" "$DIR/audio.wav" --codec=wav --frames="0-$LAST" --log=error
+npx remotion render src/index.ts "$ID" "$DIR/audio.wav" --codec=wav --frames="0-$LAST" --timeout=120000 --log=error
 ffmpeg -v error -y -i "$DIR/video.mp4" -i "$DIR/audio.wav" -c:v copy -c:a aac -b:a 192k -shortest "$DIR/muxed.mp4"
 bash ../tools/master.sh "$DIR/muxed.mp4" "$OUT"
 echo "done -> $OUT"
