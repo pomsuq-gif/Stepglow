@@ -1,12 +1,20 @@
-# SG002 — Great things start small: our version
+# SG002 — Great things start small: our version (v2, after the owner's review)
 
-Style: **Inner Light** (look `core`, 3D kit from `studio/src/episodes/nc001-work-smart/`).
+Style: **Inner Light, clean** (`look.ts → SG`: no grain, bloom only on what glows, crisp captions).
 Music: the reference track (`studio/public/sg002/music.m4a`). Grid: bass in at 5.54 s, one beat = 0.6338 s (`grid.ts → beat(k)`).
-Composition `SG002-Full` · 1080×1920 · 30 fps · 33.5 s. Scenes 1–3 come out of the dark; 3 → 4 is a hard cut (like the reference).
+Composition `SG002-Full` · 1080×1920 · 30 fps · 33.5 s. Scenes 1–2 are **split screen** (two worlds, two cameras, a thin seam);
+3–4 full frame on a **mirror floor** (`mirror.tsx`, a blurred Reflector). 1→2→3 through the dark; 3 has a hard cut inside; 3→4 hard cut.
 
-| # | Time, s | File | What happens | What we added over the reference |
-|---|---|---|---|---|
-| 1 | 0–9.34 | `S1.tsx`, `fire.tsx` | Intensity / Consistency: the left one throws a huge log on his fire — a blaze, joy, then he shields his face; the blaze dies exactly on the bass (5.54) into smoke and embers, he is left shivering and scratching his head. The right one tosses a stick on every other beat | Shader flames with noise, sparks, light pools on the ground, firelight warming the porcelain; the log charres; chest light: orange → gold blaze → cold grey-blue; the steady one stays cyan |
-| 2 | 9.34–18.22 | `S2.tsx` | Motion / Action: close-up, then at 11.88 the camera pulls back: one runs round a ring, the other climbs a path up a faceted mountain to a gold flag, arms up at 17.27 | The path is made of small steps that light up gold under his feet; the ring heats up red lap after lap, dust and sweat; snow cap, stars; gold burst at the top, chest light turns gold |
-| 3 | 18.22–24.87 | `S3.tsx` | Dream Big: he pushes a giant domino (red light, red sparks at the hands), it doesn't move; he gives up, walks back, and every domino grows out of the floor behind him, each smaller, ending with the tiniest at his feet. "Start Small" appears | Dominoes rise with a cyan flash as he passes; the chest light cools from red to calm cyan on the way back |
-| 4 | 24.87–33.5 | `S4.tsx`, `chain.ts`, `dominoes.tsx` | Start Small: he kneels and flicks the smallest one exactly when the bass returns (25.82). The chain falls, each domino resting on the next (real contact geometry), the camera rides the wave; the giant lands at 32.5; crane up to a top view of the fallen line | The pips of every domino light up gold as it falls — the fallen chain becomes a glowing path; his chest light fills from cyan to gold; ring of light and dust when the giant lands |
+v1 → v2: the owner's notes were "soap and dirt on the screen", "too much blur", "figures pass through the log and the dominoes",
+"he doesn't touch the first domino", "the mountain scene is bad", "look at the staging, editing and pace of the reference, but do it better".
+
+| # | Time, s | File | What happens |
+|---|---|---|---|
+| 1 | 0–9.34 | `S1.tsx`, `fire.tsx` | **Intensity / Consistency**, split. Same camp on both sides: seat log, campfire, the same bundle of firewood. Left stands up in front of the log, hugs the whole bundle, swings it overhead (lying across his hands), throws it in: a blaze that fills the panel, joy, then he shields his face; the fire dies exactly on the bass into smoke; he sits back on the log hugging his knees, cold blue light, breath vapour. Right pulls one stick out of the bundle every other beat (he turns a little so the stick is in the plane of his hand) and tosses it in; his fire lives, the bundle shrinks |
+| 2 | 9.34–18.22 | `S2.tsx` | **Motion / Action**, split, both go round in circles. Close-ups first; at 11.88 both cameras pull back. Left: he is running inside a hamster wheel (open in front, rungs move exactly with his feet), it heats up red, he slumps at the end. Right: a spiral stair round a tower, feet placed on the steps, each step lights gold under him, the camera orbits with him; at 17.27 he reaches the landing and the beacon on the column lights up with a beam to the sky |
+| 3 | 18.22–24.87 | `S3.tsx` | **Dream Big**. Low angle: he pushes the giant domino (hands flat on its face, red strain on the beat), gives up and looks up at it. Hard cut on beat 26 (22.02): from behind him at the start, the chain grows out of the floor from the giant toward his feet, a cyan spark running ahead of each one. "Start Small" appears as the smallest one rises at his feet |
+| 4 | 24.87–33.5 | `S4.tsx`, `chain.ts`, `dominoes.tsx` | **Start Small**. Hard cut to a low close shot: he gets down on hands and knees, his fingertip touches the smallest domino and pushes it exactly when the bass returns (25.82); the fingertip rides its top for a moment. The camera rides the wave low over the mirror floor; every domino's pips light up gold as it tips; the giant lands at 32.5 with a ring of light and dust; crane up to a top view of the golden path with him at its start |
+
+Contact rules used (no passing through anything): standing up from the log the figure steps forward onto its feet (`STAND_DX`);
+hands are placed with `reach()` at the exact surface (`hand centre = surface − hand radius`); props held in the hands are positioned
+from the solved hand joints (`toWorld`); the hero walks only where nothing stands; dominoes rise only where he isn't.
