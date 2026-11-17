@@ -6,7 +6,7 @@
 set -euo pipefail
 in="$1"
 out="${2:-${in%.mp4}-master.mp4}"
-target="I=-14:TP=-1.5:LRA=11"
+target="I=${LUFS:--14}:TP=${TP:--1.5}:LRA=11"
 json=$(ffmpeg -hide_banner -nostats -i "$in" -af "loudnorm=$target:print_format=json" -f null - 2>&1 | sed -n '/^{/,/^}/p')
 val() { printf '%s' "$json" | python3 -c "import json,sys; print(json.load(sys.stdin)['$1'])"; }
 measured="measured_I=$(val input_i):measured_TP=$(val input_tp):measured_LRA=$(val input_lra):measured_thresh=$(val input_thresh):offset=$(val target_offset)"
