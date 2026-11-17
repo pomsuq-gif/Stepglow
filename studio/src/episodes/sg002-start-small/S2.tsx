@@ -1,210 +1,277 @@
-import React, {useEffect, useMemo} from 'react';
+import React, {useMemo} from 'react';
 import * as THREE from 'three';
-import {clamp, easeInOut, gait, lerp, mixPose, poseAt, pulse, rnd, seg, ss} from '../nc001-work-smart/anim';
-import {Cam, Figure, Glow, Limb, Part, Pose, Txt, roundedBox, useLook, V3} from '../nc001-work-smart/kit3d';
-import {mat, type Look} from '../nc001-work-smart/looks';
-import {Floor, mixHex} from '../nc001-work-smart/world';
+import {clamp, easeInOut, fract, gait, lerp, mixPose, poseAt, pulse, rnd, seg, ss, STAND} from '../nc001-work-smart/anim';
+import {BODIES, Cam, Figure, Glow, Limb, Part, Pose, Txt, roundedBox, useLook, V3} from '../nc001-work-smart/kit3d';
+import {mat, type Look, type Mat} from '../nc001-work-smart/looks';
+import {mixHex} from '../nc001-work-smart/world';
 import {beat} from './grid';
+import {Mirror} from './mirror';
+import {toLocal} from './rig';
+import type {Panel} from './Full';
 
-/** scene 2 · 9.34 – 18.22 · Motion / Action: running in circles vs climbing step by step */
+/**
+ * scene 2 · 9.34 – 18.22 · Motion / Action — split screen, both go round in circles:
+ * left runs in a wheel and stays where he is; right climbs a spiral stair round a tower and rises to the beacon.
+ */
 export const S2 = {from: beat(6), to: beat(20)};
 
-const PULL = beat(10); // 11.88 — the camera pulls back
-const TOP = beat(18.5); // 17.27 — the climber reaches the summit
+const PULL = beat(10); // 11.88 — both cameras pull back
+const TOP = beat(18.5); // 17.27 — the climber reaches the beacon
 
-export const cam2 = (t: number): Cam => {
-  const k = easeInOut(seg(t, PULL - 0.2, PULL + 1.5));
-  const drift = ss(t, PULL + 1.5, S2.to);
-  return {viewH: lerp(3.6, 8.3, k) - 0.3 * drift, cx: lerp(0.02, 0.05, k), cy: lerp(0.78, 2.3, k) + 0.1 * drift, pitch: lerp(7, 22, k)};
-};
+const METAL = mat('#c9d4ec', '#5a6a90', {shade: '#3a4668', rim: '#e6efff', rimAmt: 0.45, rimPow: 2.4, wrap: 0.6, spec: 0.5});
+const STONE = mat('#aab6d2', '#3c4766', {shade: '#2c3550', rim: '#d6e2ff', rimAmt: 0.4, rimPow: 2.5, wrap: 0.6});
+const PILLAR = mat('#8a98ba', '#1f2840', {shade: '#222a44', rim: '#b8c8f0', rimAmt: 0.45, rimPow: 2.2, wrap: 0.5});
 
-const S = 0.6;
+const Stars: React.FC<{t: number; y0?: number; z?: number; spread?: number}> = ({t, y0 = 2, z = -14, spread = 14}) => (
+  <>
+    {Array.from({length: 60}, (_, i) => (
+      <Glow key={i} p={[(rnd(i + 3) - 0.5) * spread, y0 + rnd(i + 9) * spread * 0.9, z]} w={0.06 + rnd(i) * 0.07} h={0.06 + rnd(i) * 0.07} color="#d6e4ff" a={(0.3 + 0.45 * rnd(i + 2)) * (0.75 + 0.25 * Math.sin(t * (1 + rnd(i) * 2) + i))} />
+    ))}
+  </>
+);
 
-/* ── the ring ── */
-const RC: V3 = [-1.08, 0, 0.1];
-const R = 0.7;
-const A0 = (60 * Math.PI) / 180;
-const OMEGA = (Math.PI * 2) / 2.3;
-const angle = (t: number) => {
-  // running in place, then round and round: integrate the speed up
-  let a = A0;
-  const dt = 1 / 60;
-  for (let x = PULL - 0.6; x < t; x += dt) a += OMEGA * ss(x, PULL - 0.6, PULL + 0.6) * dt;
+/* ───────────── left: the wheel ───────────── */
+
+const S = 0.86; // hero scale in this scene
+const WR = 1.05; // inner radius (rungs)
+const WC: V3 = [0, WR + 0.16, 0]; // wheel centre
+const RUNGS = 34;
+const HALFW = 0.44;
+
+/** running cadence (cycles/s) speeds up over the scene; collapse after the other one reaches the top */
+const cadence = (t: number) => (2.2 + 1.3 * ss(t, S2.from, TOP)) * (1 - 0.85 * ss(t, TOP + 0.1, TOP + 0.7));
+const integ = (t: number, f: (x: number) => number) => {
+  let a = 0;
+  const dt = 1 / 90;
+  for (let x = S2.from; x < t; x += dt) a += f(x) * dt;
   return a;
 };
-const ringPos = (a: number): V3 => [RC[0] + R * Math.sin(a), 0, RC[2] + R * Math.cos(a)];
 
-/* ── the mountain ── */
-const MC: V3 = [1.55, 0, -1.4];
-const MR = 2.0;
-const MH = 3.3;
-const PHI0 = (-32 * Math.PI) / 180;
-const PHI1 = (6 * Math.PI) / 180;
-const OFF = 0.1;
-const pathAt = (u: number): V3 => {
-  const phi = lerp(PHI0, PHI1, u);
-  const r = MR * (1 - u) + OFF * (1 - u * 0.6);
-  return [MC[0] + r * Math.sin(phi), MH * u, MC[2] + r * Math.cos(phi)];
-};
-const climbU = (t: number) => {
-  // slow in the close-up, then steady up the mountain
-  if (t < PULL) return 0.1 * seg(t, S2.from, PULL);
-  return clamp(lerp(0.1, 1, seg(t, PULL, TOP) * 0.9 + 0.1 * easeInOut(seg(t, PULL, TOP))));
-};
-const heading = (u: number) => {
-  const a = pathAt(Math.max(0, u - 0.01));
-  const b = pathAt(Math.min(1, u + 0.01));
-  return (Math.atan2(-(b[2] - a[2]), b[0] - a[0]) * 180) / Math.PI;
-};
-const NS = 24;
-
-const facetCone = (r: number, hgt: number, seg: number, rows: number) => {
-  const g = new THREE.ConeGeometry(r, hgt, seg, rows, true).toNonIndexed();
-  g.translate(0, hgt / 2, 0);
-  // jitter the ring vertices so the facets catch the light differently
-  const p = g.attributes.position;
-  for (let i = 0; i < p.count; i++) {
-    const y = p.getY(i);
-    if (y > 0.01 && y < hgt - 0.01) {
-      const key = Math.round(p.getX(i) * 50) * 31 + Math.round(p.getZ(i) * 50) * 17 + Math.round(y * 50);
-      const j = (rnd(key) - 0.5) * 0.16 * r;
-      p.setX(i, p.getX(i) + j);
-      p.setZ(i, p.getZ(i) + (rnd(key + 5) - 0.5) * 0.16 * r);
-    }
-  }
-  g.computeVertexNormals();
-  return g;
+export const cam2L = (t: number): Cam => {
+  const k = easeInOut(seg(t, PULL - 0.15, PULL + 1.3));
+  const drift = ss(t, PULL + 1.3, S2.to);
+  return {viewH: lerp(2.5, 5.3, k) + 0.5 * drift, cx: lerp(0.08, 0, k), cy: lerp(0.95, 1.55, k) + 0.15 * drift, pitch: lerp(3, 9, k), yaw: lerp(12, 24, k), fov: 24};
 };
 
-const ROCK = mat('#6a7aa0', '#1a2136', {shade: '#262d46', rim: '#a8c0f0', rimAmt: 0.45, rimPow: 2.6, wrap: 0.45});
-const SNOW = mat('#ffffff', '#b7c6e4', {shade: '#6a7ca8', rim: '#e6f0ff', rimAmt: 0.5, rimPow: 2.4, wrap: 0.6});
-const RUT = mat('#56617e', '#2c3450', {shade: '#30384e', rim: '#9fb6e6', rimAmt: 0.35, wrap: 0.6});
+const ringGeo = new THREE.TorusGeometry(WR + 0.03, 0.035, 12, 120);
+const hubGeo = new THREE.CylinderGeometry(0.09, 0.09, 0.3, 24).rotateX(Math.PI / 2);
 
-const Mountain: React.FC = () => {
-  const rock = useMemo(() => facetCone(MR, MH, 9, 5), []);
-  const cap = useMemo(() => facetCone(MR * 0.27, MH * 0.27, 9, 2), []);
-  useEffect(() => () => {
-    rock.dispose();
-    cap.dispose();
-  }, [rock, cap]);
+const Wheel: React.FC<{ang: number; heat: number}> = ({ang, heat}) => {
+  const look = useLook();
+  const q = Math.round(heat * 20) / 20;
+  const hot = useMemo(() => ({...METAL, top: mixHex('#c9d4ec', '#ff7a4a', q), bottom: mixHex('#5a6a90', '#b3263a', q), rim: mixHex('#e6efff', '#ffb08a', q), emit: 1 + 0.35 * q}) as Mat, [q]);
+  const y0 = WC[1] - WR - 0.1;
+  const y1 = WC[1] + WR + 0.1;
   return (
     <>
-      <Part geo={rock} m={ROCK} y0={0} y1={MH} position={MC} />
-      <Part geo={cap} m={SNOW} y0={MH * 0.6} y1={MH} position={[MC[0], MH * 0.73 + 0.005, MC[2]]} scale={[1.04, 1.0, 1.04]} />
+      <group position={WC} rotation={[0, 0, ang]}>
+        {/* open in front: only the rim; the spokes and the mount are on the back side */}
+        <Part geo={ringGeo} m={hot} y0={-WR} y1={WR} position={[0, 0, HALFW]} />
+        <Part geo={ringGeo} m={hot} y0={-WR} y1={WR} position={[0, 0, -HALFW]} />
+        {Array.from({length: 6}, (_, i) => {
+          const a = (i / 6) * Math.PI * 2;
+          return <Limb key={i} a={[0, 0, -HALFW]} b={[Math.cos(a) * (WR + 0.02), Math.sin(a) * (WR + 0.02), -HALFW]} r0={0.022} r1={0.018} m={METAL} y0={-WR} y1={WR} />;
+        })}
+        {Array.from({length: RUNGS}, (_, i) => {
+          const a = (i / RUNGS) * Math.PI * 2;
+          const c: [number, number] = [Math.cos(a) * WR, Math.sin(a) * WR];
+          return <Limb key={i} a={[c[0], c[1], -HALFW]} b={[c[0], c[1], HALFW]} r0={0.022} r1={0.022} m={METAL} y0={-WR} y1={WR} />;
+        })}
+      </group>
+      <Part geo={hubGeo} m={METAL} y0={y0} y1={y1} position={[WC[0], WC[1], -HALFW - 0.12]} />
+      {/* stand: an A-frame on each side, outside the wheel */}
+      <Limb a={[WC[0], WC[1], -HALFW - 0.24]} b={[WC[0] - 0.75, 0, -HALFW - 0.4]} r0={0.035} r1={0.04} m={METAL} y0={0} y1={y1} />
+      <Limb a={[WC[0], WC[1], -HALFW - 0.24]} b={[WC[0] + 0.75, 0, -HALFW - 0.4]} r0={0.035} r1={0.04} m={METAL} y0={0} y1={y1} />
+      <Glow p={[WC[0], 0.01, 0]} w={3.2} h={1.6} color={mixHex(look.bg.glow, '#ff5a3a', heat)} a={0.25 + 0.25 * heat} flat />
     </>
   );
 };
 
-const ringGeo = (() => {
-  const g = new THREE.RingGeometry(R - 0.11, R + 0.11, 96, 1);
-  g.rotateX(-Math.PI / 2);
-  return g;
-})();
-const stepGeo = roundedBox(0.2, 0.035, 0.12, 0.012);
-const flagGeo = (() => {
-  const s = new THREE.Shape();
-  s.moveTo(0, 0);
-  s.lineTo(0.36, -0.1);
-  s.lineTo(0, -0.22);
-  s.lineTo(0, 0);
-  return new THREE.ExtrudeGeometry(s, {depth: 0.012, bevelEnabled: false});
-})();
-
-export const World2: React.FC<{t: number}> = ({t}) => {
+const WorldL: React.FC<{t: number}> = ({t}) => {
   const look = useLook();
+  const b = BODIES[look.kind];
+  const k = S * b.s;
+  const L = b.thigh + b.shin;
+  const stride = 0.5;
+  const phase = integ(t, cadence);
+  // the rungs under the feet move exactly as fast as the feet in stance
+  const v = (2 * stride * L * k) / 0.55;
+  const ang = -integ(t, (x) => (cadence(x) * v) / WR);
+  const fade = ss(t, TOP + 0.1, TOP + 0.7);
+  const tired = ss(t, PULL, TOP);
+  const run = gait(phase, {stride, lift: 0.26, lean: 16 + 6 * tired, bob: 0.05, arm: 0.62, armY: -0.5, crouch: 0.9});
+  const SLUMP: Pose = {pelvis: [0.05, 0.86], lean: 48, head: [0.25, -0.35], handF: [0.55, -0.72], elbowF: -1, handB: [0.48, -0.74], elbowB: -1, footF: [0.12, 0], footB: [-0.16, 0]};
+  const pose = mixPose(run, SLUMP, fade);
+  const ground = WC[1] - WR + 0.022;
+  const heat = clamp(tired * 0.8 + fade * 0.2);
+  const tint = mixHex('#ff8a2e', '#ff3b3b', tired);
+  return (
+    <>
+      <Stars t={t} />
+      <Mirror amt={0.4} poolR={3.5} pool="#16223e" res={[540, 1080]} far={16} />
+      <Glow p={[0, 1.5, -3]} w={6} h={5} color={look.bg.glow} a={0.3} />
+      <Wheel ang={ang} heat={heat} />
+      <Figure pose={pose} cast={look.a} x={0.04} y={ground} s={S} dir={1} yaw={6} energy={0.8 - 0.5 * tired + 0.12 * Math.sin(t * 19)} tint={tint} />
+      {/* sweat flying off */}
+      {Array.from({length: 5}, (_, i) => {
+        const ph = fract(t * 1.6 + i / 5);
+        return <Glow key={i} p={[0.04 - ph * 0.5, ground + 1.32 * S + ph * 0.25 - ph * ph * 0.7, 0.05 + (i - 2) * 0.03]} w={0.035} h={0.045} color="#bfe6ff" a={(1 - ph) * (0.4 + tired * 0.6) * (1 - fade)} />;
+      })}
+      {void k}
+    </>
+  );
+};
+
+/* ───────────── right: the spiral stair ───────────── */
+
+const NS = 22; // steps
+const DA = (27 * Math.PI) / 180; // turn per step
+const RISE = 0.155;
+const RP = 0.62; // walking radius
+const COL_R = 0.24;
+const TOPY = RISE * NS; // the last step is the landing at the top
+const stepTop = (i: number) => RISE * (i + 1);
+const stepAng = (i: number) => i * DA;
+
+/** body progress in steps */
+const prog = (t: number) => {
+  const k = seg(t, S2.from, TOP - 0.25);
+  return lerp(-0.6, NS - 0.6, k * 0.92 + 0.08 * easeInOut(k));
+};
+/** one foot's step (continuous): swings in the first half of every two-step window, planted in the second */
+const footStep = (p: number, q: number) => {
+  const x = p - q;
+  const w = Math.floor(x / 2);
+  return q + 2 * w + 2 * ss(clamp(x - 2 * w), 0.05, 0.95);
+};
+const onPath = (s: number, r = RP): V3 => [r * Math.sin(stepAng(s)), 0, r * Math.cos(stepAng(s))];
+
+export const cam2R = (t: number): Cam => {
+  const p = prog(t);
+  const hy = RISE * (p + 1);
+  const k = easeInOut(seg(t, PULL - 0.15, PULL + 1.3));
+  const end = ss(t, TOP - 0.6, S2.to);
+  // close: orbit with him, slightly outside and ahead; wide: the whole tower, still turning slowly
+  const th = (stepAng(p) * 180) / Math.PI;
+  const pos = onPath(p);
+  return {
+    viewH: lerp(2.9, 5.2, k) + 1.2 * end,
+    cx: lerp(pos[0], 0, k),
+    cz: lerp(pos[2], 0, k),
+    cy: lerp(hy + 0.62, hy * 0.62 + 1.0, k) + end * 0.3,
+    pitch: lerp(4, 10, k) + 6 * end,
+    yaw: lerp(th + 62, th + 30, k),
+    fov: 24,
+  };
+};
+
+const stepGeo = roundedBox(0.7, 0.07, 0.27, 0.02);
+const colGeo = new THREE.CylinderGeometry(COL_R, COL_R * 1.08, TOPY + 1.3, 36);
+const discGeo = new THREE.CylinderGeometry(0.98, 0.98, 0.08, 48);
+const orbGeo = new THREE.SphereGeometry(1, 32, 20);
+
+const WorldR: React.FC<{t: number}> = ({t}) => {
+  const look = useLook();
+  const b = BODIES[look.kind];
+  const L = b.thigh + b.shin;
   const gold = look.accent;
-  const dimStep = useMemo(() => ({...look.prop, top: '#7d8db0', bottom: '#4a587a', emit: 0.8}), [look]);
+  const p = prog(t);
+  const arrived = ss(t, TOP - 0.05, TOP + 0.3);
+  const onTop = t >= TOP - 0.15;
 
-  /* runner */
-  const a = angle(t);
-  const rp = ringPos(a);
-  const tired = ss(t, PULL, S2.to);
-  const run = gait(t * 2.7, {stride: 0.5, lift: 0.26, lean: 16 - tired * 4, bob: 0.05, arm: 0.62, armY: -0.5, crouch: 0.9});
-  const runnerPose: Pose = {...run, head: [0.1, -0.1 * tired]};
-  const runTint = mixHex('#ff8a2e', '#ff4a2a', tired);
-  const laps = Math.max(0, (a - A0) / (Math.PI * 2));
-
-  /* climber */
-  const u = climbU(t);
-  const cp = pathAt(u);
-  const arrived = ss(t, TOP - 0.05, TOP + 0.25);
-  const walk = gait(t * 1.55, {stride: 0.36, lift: 0.2, lean: 15, bob: 0.02, arm: 0.3, crouch: 0.95});
+  // feet on the steps (world), the body between them
+  const sA = footStep(p, 0);
+  const sB = footStep(p, 1);
+  const top = (i: number) => (i < 0 ? 0 : stepTop(Math.min(i, NS - 1)));
+  // a foot swings from step i0 to i0 + 2 over an arc that clears the step in between
+  const footW = (s: number, q: number): V3 => {
+    const i0 = q + 2 * Math.floor((s - q) / 2);
+    const v = (s - i0) / 2;
+    const base = onPath(s);
+    return [base[0], lerp(top(i0), top(i0 + 2), v) + Math.sin(v * Math.PI) * 0.09, base[2]];
+  };
+  const fA = footW(sA, 0);
+  const fB = footW(sB, 1);
+  const bodyS = clamp(p, -0.6, NS - 1);
+  const bodyPos = onPath(bodyS);
+  const by = Math.min(fA[1], fB[1]);
+  const th = (stepAng(bodyS) * 180) / Math.PI;
+  const yaw = lerp(-th, -th + 70, arrived);
+  const fig = {x: bodyPos[0], y: by, z: bodyPos[2], dir: 1 as const, yaw, s: S};
+  const la = toLocal(fA, fig, b);
+  const lb = toLocal(fB, fig, b);
+  const sw = Math.sin(p * Math.PI);
+  const climb: Pose = {
+    pelvis: [0.02, 0],
+    pelvisY: b.ankle + L * 0.84 + Math.max(la[1], lb[1]) * 0.25 + Math.abs(sw) * 0.01,
+    lean: 10,
+    head: [0.08, 0.05],
+    handF: [-sw * 0.3, -0.74],
+    handB: [sw * 0.3, -0.74],
+    elbowF: -1,
+    elbowB: -1,
+    footF: [la[0] / L, (la[1] - b.ankle) / L],
+    footB: [lb[0] / L, (lb[1] - b.ankle) / L],
+  };
   const JOY: Pose = {pelvis: [0, 0.985], lean: -4, head: [0, 0.18], handF: [0.38, 0.9], elbowF: -1, handB: [-0.3, 0.88], elbowB: -1, footF: [0.12, 0], footB: [-0.12, 0]};
-  const climbPose = arrived > 0 ? mixPose(walk, poseAt(t, [[TOP, JOY], [TOP + 0.35, {...JOY, pelvis: [0, 1.05]}], [TOP + 0.6, JOY]]), arrived) : walk;
-  const climbTint = mixHex('#38e8ff', '#ffd66b', arrived);
-  const hd = heading(Math.min(u, 0.985));
-  const yawC = arrived > 0 ? lerp(-hd, -70, arrived) : -hd;
-
-  const flagBase: V3 = [MC[0] + 0.18, MH - 0.02, MC[2] + 0.05];
-  const wave = Math.sin(t * 6) * 0.25;
-  const burst = pulse(t, TOP, TOP + 0.25, TOP + 1.3);
+  const pose = onTop ? poseAt(t, [[TOP - 0.15, {...STAND, footF: [0.12, 0], footB: [-0.12, 0]}], [TOP + 0.2, JOY], [TOP + 0.45, {...JOY, pelvis: [0, 1.06]}], [TOP + 0.7, JOY]]) : climb;
+  const topFig = {...fig, ...(() => { const q = onPath(NS - 1); return {x: q[0], z: q[2]}; })(), y: TOPY};
+  const beacon = ss(t, TOP + 0.1, TOP + 0.5);
+  const tint = mixHex('#38e8ff', '#ffd66b', arrived);
 
   return (
     <>
-      <Floor y={0} w={30} d={16} z={-4} />
-      {/* stars */}
-      {Array.from({length: 46}, (_, i) => (
-        <Glow key={i} p={[(rnd(i + 3) - 0.5) * 12, 2.6 + rnd(i + 9) * 4.5, -9]} w={0.07 + rnd(i) * 0.06} h={0.07 + rnd(i) * 0.06} color="#cfe0ff" a={(0.35 + 0.4 * rnd(i + 2)) * (0.75 + 0.25 * Math.sin(t * (1 + rnd(i) * 2) + i))} />
-      ))}
-      <Glow p={[MC[0], MH * 0.6, MC[2] - 1.5]} w={6.5} h={6} color={look.bg.glow} a={0.35} />
-
-      {/* the ring: a worn rut that heats up with every lap */}
-      <Part geo={ringGeo} m={RUT} y0={-0.1} y1={0.1} position={[RC[0], 0.006, RC[2]]} />
-      <Glow p={[RC[0], 0.02, RC[2]]} w={R * 2.6} h={R * 2.6} color={mixHex('#3b5a9a', '#ff5a2a', clamp(laps / 2.5))} a={0.18 + 0.2 * clamp(laps / 2.5)} flat />
-      {Array.from({length: 18}, (_, i) => {
-        // dust kicked up behind the runner
-        const age = (i / 18) * 0.6;
-        const pa = angle(t - age);
-        const p = ringPos(pa);
-        return t - age > PULL - 0.3 ? <Glow key={i} p={[p[0], 0.06 + age * 0.25, p[2]]} w={0.1 + age * 0.35} h={0.1 + age * 0.35} color="#8fa2c8" a={(1 - age / 0.6) * 0.18} /> : null;
+      <Stars t={t} y0={1} />
+      <Mirror amt={0.35} poolR={3} pool="#16223e" res={[540, 1080]} far={16} />
+      {/* clouds drifting at half height: how high this is */}
+      {Array.from({length: 9}, (_, i) => {
+        const a = (i / 9) * Math.PI * 2 + t * 0.05;
+        const r = 1.6 + rnd(i) * 1.2;
+        return <Glow key={i} p={[Math.sin(a) * r, 1.4 + rnd(i + 4) * 0.5, Math.cos(a) * r - 0.6]} w={2.2} h={0.5} color="#6d82b8" a={0.12} />;
       })}
-      <Figure pose={runnerPose} cast={look.a} x={rp[0]} z={rp[2]} dir={1} yaw={-(a * 180) / Math.PI} s={S} energy={0.75 - 0.45 * tired + 0.15 * Math.sin(t * 17)} tint={runTint} />
-      {/* sweat */}
-      {Array.from({length: 4}, (_, i) => {
-        const ph = ((t * 1.7 + i / 4) % 1);
-        return <Glow key={i} p={[rp[0] + (i - 1.5) * 0.06 * ph * 3, 0.95 + ph * 0.2 - ph * ph * 0.5, rp[2] + 0.05]} w={0.04} h={0.05} color="#bfe6ff" a={(1 - ph) * 0.8} />;
-      })}
-
-      {/* the mountain and the path of small steps that light up under the feet */}
-      <Mountain />
+      <Glow p={[0, TOPY * 0.5, -2.5]} w={4} h={TOPY + 3} color={look.bg.glow} a={0.28} />
+      <Part geo={colGeo} m={PILLAR} y0={0} y1={TOPY} position={[0, (TOPY + 1.3) / 2, 0]} />
       {Array.from({length: NS}, (_, i) => {
-        const uk = (i + 0.5) / NS;
-        const p = pathAt(uk);
-        const lit = ss(u, uk - 0.03, uk + 0.01);
-        const phi = lerp(PHI0, PHI1, uk);
+        const a = stepAng(i);
+        const c = onPath(i, 0.6);
+        const lit = ss(Math.max(sA, sB), i - 0.15, i + 0.1);
         return (
           <React.Fragment key={i}>
-            <Part geo={stepGeo} m={lit > 0.5 ? gold : dimStep} y0={p[1] - 0.05} y1={p[1] + 0.05} position={[p[0], p[1] - 0.02, p[2]]} rotation={[0, phi, 0]} />
-            {lit > 0 ? <Glow p={[p[0], p[1] + 0.03, p[2] + 0.05]} w={0.42} h={0.22} color={gold.top} a={0.55 * lit} /> : null}
+            <Part geo={stepGeo} scale={i === NS - 1 ? [1, 1, 2.2] : 1} m={lit > 0.5 ? gold : STONE} y0={stepTop(i) - 0.08} y1={stepTop(i)} position={[c[0], stepTop(i) - 0.07, c[2]]} rotation={[0, a - Math.PI / 2, 0]} />
+            {lit > 0 ? <Glow p={[c[0], stepTop(i) - 0.02, c[2] + 0.02]} w={0.75} h={0.28} color={gold.top} a={0.45 * lit} /> : null}
           </React.Fragment>
         );
       })}
-      <Figure pose={climbPose} cast={look.b} x={cp[0]} y={cp[1]} z={cp[2]} dir={1} yaw={yawC} s={S} energy={0.85 + 0.15 * arrived} tint={climbTint} gy={0} />
-
-      {/* the flag at the top */}
-      <Limb a={flagBase} b={[flagBase[0], flagBase[1] + 0.78, flagBase[2]]} r0={0.014} r1={0.012} m={look.prop} y0={MH} y1={MH + 0.8} />
-      <Part geo={flagGeo} m={gold} y0={MH + 0.4} y1={MH + 0.8} position={[flagBase[0], flagBase[1] + 0.78, flagBase[2]]} rotation={[0, wave, Math.sin(t * 9) * 0.05]} />
-      <Glow p={[flagBase[0] + 0.15, flagBase[1] + 0.68, flagBase[2] + 0.1]} w={0.9} h={0.9} color={gold.top} a={0.25 + 0.6 * burst} />
-      {burst > 0
-        ? Array.from({length: 10}, (_, i) => {
-            const ang = (i / 10) * Math.PI * 2;
-            const rr = 0.2 + seg(t, TOP, TOP + 1.3) * 1.1;
-            return <Glow key={i} p={[cp[0] + Math.cos(ang) * rr, cp[1] + 0.5 + Math.sin(ang) * rr, cp[2] + 0.2]} w={0.07} h={0.07} color={gold.top} a={burst} />;
-          })
-        : null}
-      {arrived > 0 ? <Glow p={[cp[0], cp[1] + 0.4, cp[2] + 0.2]} w={2.2} h={2.2} color={gold.top} a={0.35 * arrived} /> : null}
+      {/* the platform on top and the beacon that lights when he arrives */}
+      <Part geo={discGeo} m={STONE} y0={TOPY} y1={TOPY + 1.4} position={[0, TOPY + 1.34, 0]} scale={[0.32, 1, 0.32]} />
+      <Part geo={orbGeo} m={beacon > 0.5 ? gold : STONE} y0={TOPY + 1.3} y1={TOPY + 1.8} position={[0, TOPY + 1.6, 0]} scale={0.22} />
+      {beacon > 0 ? (
+        <>
+          <Glow p={[0, TOPY + 1.6, 0.25]} w={1.6 * beacon} h={1.6 * beacon} color={gold.top} a={0.7 * beacon} />
+          <Glow p={[0, TOPY + 4.8, 0]} w={0.8} h={6.5} color={gold.top} a={0.35 * beacon} mode="beam" />
+          {Array.from({length: 12}, (_, i) => {
+            const a = (i / 12) * Math.PI * 2;
+            const r = 0.3 + seg(t, TOP + 0.1, TOP + 1.1) * 1.4;
+            return <Glow key={i} p={[Math.cos(a) * r, TOPY + 1.6 + Math.sin(a) * r, 0.2]} w={0.06} h={0.06} color={gold.top} a={pulse(t, TOP + 0.1, TOP + 0.3, TOP + 1.1)} />;
+          })}
+        </>
+      ) : null}
+      <Figure pose={pose} cast={look.b} x={onTop ? topFig.x : fig.x} y={onTop ? topFig.y : fig.y} z={onTop ? topFig.z : fig.z} s={S} dir={1} yaw={yaw} energy={0.85 + 0.15 * arrived} tint={tint} />
     </>
   );
 };
 
-export const Over2: React.FC<{t: number; look: Look; cam: Cam}> = ({t, look}) => {
-  const o = ss(t, S2.from + 0.05, S2.from + 0.5) * (1 - ss(t, S2.to - 0.45, S2.to - 0.1));
+export const S2L: Panel = {cam: cam2L, World: WorldL};
+export const S2R: Panel = {cam: cam2R, World: WorldR};
+
+export const Over2: React.FC<{t: number; look: Look}> = ({t, look}) => {
+  const o = ss(t, S2.from + 0.05, S2.from + 0.45) * (1 - ss(t, S2.to - 0.45, S2.to - 0.1));
   return (
     <>
-      <Txt look={look} x={290} y={290} o={o}>
+      <Txt look={look} x={270} y={300} o={o} glow={0.5}>
         Motion
       </Txt>
-      <Txt look={look} x={790} y={290} o={o}>
+      <Txt look={look} x={810} y={300} o={o} glow={0.5}>
         Action
       </Txt>
     </>

@@ -101,18 +101,18 @@ export const Flame: React.FC<{p: V3; w: number; h: number; t: number; seed: numb
  * I    — size of the fire (0 = out, ~0.85 = a steady campfire, 2.5 = a blaze)
  * burnt — how charred the logs are; ember — glow left in the ashes; smoke — 0..1 of a smoke column
  */
-export const Campfire: React.FC<{x: number; z?: number; t: number; I: number; seed: number; burnt?: number; ember?: number; smoke?: number; smokeT?: number}> = ({x, z = 0, t, I, seed, burnt = 0, ember = 0, smoke = 0, smokeT = 0}) => {
+export const Campfire: React.FC<{x: number; z?: number; t: number; I: number; seed: number; burnt?: number; ember?: number; smoke?: number; smokeT?: number; ring?: number}> = ({x, z = 0, t, I, seed, burnt = 0, ember = 0, smoke = 0, smokeT = 0, ring = 1}) => {
   const look = useLook();
   const wood = charred(burnt);
   const fl = I * (0.92 + 0.08 * Math.sin(t * 13 + seed) + 0.05 * Math.sin(t * 7.3 + seed * 2));
   const stones = Array.from({length: 10}, (_, i) => {
     const a = (i / 10) * Math.PI * 2 + seed;
-    return [x + Math.cos(a) * 0.33, 0.035, z + Math.sin(a) * 0.2] as V3;
+    return [x + Math.cos(a) * 0.33 * ring, 0.035, z + Math.sin(a) * 0.2 * ring] as V3;
   });
   const logs: [V3, V3][] = [
-    [[x - 0.26, 0.05, z + 0.08], [x + 0.24, 0.07, z - 0.06]],
-    [[x + 0.25, 0.05, z + 0.1], [x - 0.22, 0.08, z - 0.08]],
-    [[x - 0.05, 0.05, z + 0.2], [x + 0.03, 0.1, z - 0.18]],
+    [[x - 0.26 * ring, 0.05, z + 0.08 * ring], [x + 0.24 * ring, 0.07, z - 0.06 * ring]],
+    [[x + 0.25 * ring, 0.05, z + 0.1 * ring], [x - 0.22 * ring, 0.08, z - 0.08 * ring]],
+    [[x - 0.05 * ring, 0.05, z + 0.2 * ring], [x + 0.03 * ring, 0.1, z - 0.18 * ring]],
   ];
   const sparks = Math.round(Math.min(26, 10 * I));
   return (
@@ -137,9 +137,9 @@ export const Campfire: React.FC<{x: number; z?: number; t: number; I: number; se
           ))
         : null}
       {/* flames: a wide sheet, two side tongues and a bright heart */}
-      <Flame p={[x, 0.04, z + 0.05]} w={0.62 * Math.pow(fl, 0.6)} h={0.95 * fl} t={t} seed={seed} />
-      <Flame p={[x - 0.1 * Math.pow(fl, 0.5), 0.04, z + 0.08]} w={0.36 * Math.pow(fl, 0.6)} h={0.62 * fl} t={t * 1.13} seed={seed + 3.7} a={0.85} />
-      <Flame p={[x + 0.11 * Math.pow(fl, 0.5), 0.04, z + 0.09]} w={0.34 * Math.pow(fl, 0.6)} h={0.55 * fl} t={t * 0.91} seed={seed + 7.1} a={0.85} />
+      <Flame p={[x, 0.04, z + 0.05]} w={0.56 * Math.pow(fl, 0.2)} h={0.95 * fl} t={t} seed={seed} />
+      <Flame p={[x - 0.08 * Math.pow(fl, 0.3), 0.04, z + 0.08]} w={0.36 * Math.pow(fl, 0.3)} h={0.62 * fl} t={t * 1.13} seed={seed + 3.7} a={0.85} />
+      <Flame p={[x + 0.09 * Math.pow(fl, 0.3), 0.04, z + 0.09]} w={0.34 * Math.pow(fl, 0.3)} h={0.55 * fl} t={t * 0.91} seed={seed + 7.1} a={0.85} />
       <Flame p={[x, 0.04, z + 0.12]} w={0.3 * Math.pow(fl, 0.6)} h={0.4 * fl} t={t * 1.3} seed={seed + 1.9} a={0.9} colors={['#ff7a1a', '#ffd06a', '#ffffff']} />
       {/* sparks */}
       {Array.from({length: sparks}, (_, i) => {
