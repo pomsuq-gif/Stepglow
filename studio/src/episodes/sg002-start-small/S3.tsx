@@ -5,7 +5,8 @@ import type {Look} from '../nc001-work-smart/looks';
 import {mixHex} from '../nc001-work-smart/world';
 import {N, S as SPOS, at, h, th} from './chain';
 import {allIdx, Domino} from './dominoes';
-import {beat} from './grid';
+import {BEAT, beat, grid, hit, hits} from './grid';
+import {Title} from './title';
 import {B, FACE, HS, K, PUSH_X, S_KNEEL, S_PUSH, heroAt} from './hero34';
 import {Mirror} from './mirror';
 import type {Panel} from './Full';
@@ -16,22 +17,24 @@ import type {Panel} from './Full';
  */
 export const S3 = {from: beat(20), to: 24.87};
 const CUT = beat(26); // 22.02
-const GIVE_UP = beat(24.5); // 21.07
+const GIVE_UP = beat(24.5); // 21.07 — between two pushes, so nothing jumps
 /** each domino rises in turn, big to small, on a fast pulse */
-export const RISE_AT = allIdx.map((i) => (i === N - 1 ? -1 : beat(26.45 + (N - 2 - i) * 0.42)));
+export const RISE_AT = allIdx.map((i) => (i === N - 1 ? -1 : beat(26 + (N - 2 - i) * 0.5))); // on every half beat
 
 const GI = N - 1;
 
 export const cam3 = (t: number): Cam => {
   if (t < CUT) {
     const k = easeInOut(seg(t, S3.from, GIVE_UP));
-    const up = easeInOut(seg(t, GIVE_UP, CUT));
+    const up = easeInOut(seg(t, GIVE_UP + 0.1, CUT));
+    const punch = 0.035 * hits(t, grid(21, 23), 5);
     const [x, z] = at(S_PUSH + 1.4, -0.6);
-    return {viewH: lerp(10.6, 9.6, k) + 0.6 * up, cx: x, cz: z, cy: lerp(4.2, 3.9, k) + 0.9 * up, pitch: lerp(-3, -2, k) - 3 * up, yaw: lerp(-18, -10, k), fov: 32};
+    return {viewH: (lerp(11.4, 9.4, k) + 0.9 * up) * (1 - punch), cx: x, cz: z, cy: lerp(4.4, 3.8, k) + 1.0 * up, pitch: lerp(-3, -2, k) - 4 * up, yaw: lerp(-22, -8, k) + 6 * up, fov: 32};
   }
   const k = easeInOut(seg(t, CUT, S3.to + 0.3));
-  const [x, z] = at(lerp(3.3, 2.5, k), 0.2);
-  return {viewH: lerp(10, 8.4, k), cx: x, cz: z, cy: lerp(2.7, 2.1, k), pitch: lerp(15, 17, k), yaw: lerp(-31, -25, k), fov: 32};
+  const punch = 0.015 * hits(t, RISE_AT.filter((r) => r > 0), 8);
+  const [x, z] = at(lerp(3.3, 2.3, k), 0.2);
+  return {viewH: lerp(10.4, 8.2, k) * (1 - punch), cx: x, cz: z, cy: lerp(2.8, 2.0, k), pitch: lerp(14, 18, k), yaw: lerp(-33, -24, k), fov: 32};
 };
 
 const PUSH0: Pose = {pelvis: [-0.34, 0.9], lean: 36, head: [0.12, 0.05], handF: [0, 0], elbowF: -1, handB: [0, 0], elbowB: -1, footF: [0.0, 0], footB: [-0.55, 0]};
@@ -41,8 +44,8 @@ const DOWN: Pose = {...STAND, lean: 10, head: [0.22, -0.42], footF: [0.1, 0], fo
 const WorldA: React.FC<{t: number}> = ({t}) => {
   const look = useLook();
   // hands flat on the giant at local x = PUSH_X, both pushes on the beat
-  const beats = (t - S3.from) / 0.6338;
-  const push = Math.pow(Math.sin(beats * Math.PI), 2);
+  const beats = (t - S3.from) / BEAT;
+  const push = Math.pow(Math.cos(beats * Math.PI), 2); // hardest push on every beat
   const hY = 1.05 + 0.04 * push;
   const P1: Pose = {...PUSH0, handF: reach(PUSH0, B, PUSH_X, hY), handB: reach(PUSH0, B, PUSH_X, hY - 0.06)};
   const P2b: Pose = {...PUSH0, pelvis: [-0.4, 0.86], lean: 42, footB: [-0.62, 0]};
@@ -112,17 +115,13 @@ const World3: React.FC<{t: number}> = ({t}) => (t < CUT ? <WorldA t={t} /> : <Wo
 
 export const S3F: Panel = {cam: cam3, World: World3};
 
-export const Over3: React.FC<{t: number; look: Look}> = ({t, look}) => {
-  const o1 = ss(t, S3.from + 0.1, S3.from + 0.5) * (1 - ss(t, CUT - 0.3, CUT - 0.05));
-  const o2 = ss(t, RISE_AT[0] + 0.1, RISE_AT[0] + 0.45);
-  return (
-    <>
-      <Txt look={look} x={540} y={300} o={o1} glow={0.5}>
-        Dream Big
-      </Txt>
-      <Txt look={look} x={540} y={300} o={o2} glow={0.5}>
-        Start Small
-      </Txt>
-    </>
-  );
-};
+export const Over3: React.FC<{t: number; look: Look}> = ({t}) => (
+  <>
+    <Title x={540} y={300} t={t} at={S3.from + 0.1} out={CUT - 0.3}>
+      Dream Big
+    </Title>
+    <Title x={540} y={300} t={t} at={RISE_AT[0]}>
+      Start Small
+    </Title>
+  </>
+);

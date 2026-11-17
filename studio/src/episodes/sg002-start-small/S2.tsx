@@ -4,7 +4,8 @@ import {clamp, easeInOut, fract, gait, lerp, mixPose, poseAt, pulse, rnd, seg, s
 import {BODIES, Cam, Figure, Glow, Limb, Part, Pose, Txt, roundedBox, useLook, V3} from '../nc001-work-smart/kit3d';
 import {mat, type Look, type Mat} from '../nc001-work-smart/looks';
 import {mixHex} from '../nc001-work-smart/world';
-import {beat} from './grid';
+import {BEAT, beat, hit, hits, grid} from './grid';
+import {Title} from './title';
 import {Mirror} from './mirror';
 import {toLocal} from './rig';
 import type {Panel} from './Full';
@@ -38,19 +39,25 @@ const WC: V3 = [0, WR + 0.16, 0]; // wheel centre
 const RUNGS = 34;
 const HALFW = 0.44;
 
-/** running cadence (cycles/s) speeds up over the scene; collapse after the other one reaches the top */
-const cadence = (t: number) => (2.2 + 1.3 * ss(t, S2.from, TOP)) * (1 - 0.85 * ss(t, TOP + 0.1, TOP + 0.7));
-const integ = (t: number, f: (x: number) => number) => {
-  let a = 0;
-  const dt = 1 / 90;
-  for (let x = S2.from; x < t; x += dt) a += f(x) * dt;
-  return a;
+/**
+ * running phase, locked to the music: one stride cycle per beat (a footfall on every half beat),
+ * a two-beat ramp from the pull-back to double time (footfalls on quarter beats), then he runs out of steam after the other one reaches the top
+ */
+const runPhase = (t: number) => {
+  const u = (t - S2.from) / BEAT;
+  const uTop = (TOP - S2.from) / BEAT;
+  const base = (x: number) => (x < 4 ? x : x < 6 ? 4 + (x - 4) + 0.25 * (x - 4) ** 2 : 7 + 2 * (x - 6));
+  if (u <= uTop) return base(u);
+  const v = Math.min(1.5, u - uTop);
+  return base(uTop) + 2 * v - (2 / 3) * v * v;
 };
 
+const BARS = grid(12, 18, 2);
 export const cam2L = (t: number): Cam => {
-  const k = easeInOut(seg(t, PULL - 0.15, PULL + 1.3));
-  const drift = ss(t, PULL + 1.3, S2.to);
-  return {viewH: lerp(2.5, 5.3, k) + 0.5 * drift, cx: lerp(0.08, 0, k), cy: lerp(0.95, 1.55, k) + 0.15 * drift, pitch: lerp(3, 9, k), yaw: lerp(12, 24, k), fov: 24};
+  const k = easeInOut(seg(t, PULL - 0.1, PULL + 1.25));
+  const drift = ss(t, PULL + 1.25, S2.to);
+  const punch = 0.04 * hits(t, BARS, 6) + 0.06 * hit(t, TOP, 4);
+  return {viewH: (lerp(2.5, 5.4, k) + 0.4 * drift) * (1 - punch), cx: lerp(0.08, 0, k), cy: lerp(0.95, 1.55, k) + 0.15 * drift, pitch: lerp(3, 9, k), yaw: lerp(12, 26, k) + 10 * drift, fov: 24};
 };
 
 const ringGeo = new THREE.TorusGeometry(WR + 0.03, 0.035, 12, 120);
@@ -93,10 +100,9 @@ const WorldL: React.FC<{t: number}> = ({t}) => {
   const k = S * b.s;
   const L = b.thigh + b.shin;
   const stride = 0.5;
-  const phase = integ(t, cadence);
+  const phase = runPhase(t);
   // the rungs under the feet move exactly as fast as the feet in stance
-  const v = (2 * stride * L * k) / 0.55;
-  const ang = -integ(t, (x) => (cadence(x) * v) / WR);
+  const ang = -(phase * (2 * stride * L * k)) / 0.55 / WR;
   const fade = ss(t, TOP + 0.1, TOP + 0.7);
   const tired = ss(t, PULL, TOP);
   const run = gait(phase, {stride, lift: 0.26, lean: 16 + 6 * tired, bob: 0.05, arm: 0.62, armY: -0.5, crouch: 0.9});
@@ -124,7 +130,7 @@ const WorldL: React.FC<{t: number}> = ({t}) => {
 
 /* ───────────── right: the spiral stair ───────────── */
 
-const NS = 22; // steps
+const NS = 24; // steps
 const DA = (27 * Math.PI) / 180; // turn per step
 const RISE = 0.155;
 const RP = 0.62; // walking radius
@@ -134,10 +140,7 @@ const stepTop = (i: number) => RISE * (i + 1);
 const stepAng = (i: number) => i * DA;
 
 /** body progress in steps */
-const prog = (t: number) => {
-  const k = seg(t, S2.from, TOP - 0.25);
-  return lerp(-0.6, NS - 0.6, k * 0.92 + 0.08 * easeInOut(k));
-};
+const prog = (t: number) => clamp((t - beat(6.5)) / (BEAT / 2), -1, NS - 1); // a step on every half beat
 /** one foot's step (continuous): swings in the first half of every two-step window, planted in the second */
 const footStep = (p: number, q: number) => {
   const x = p - q;
@@ -149,13 +152,14 @@ const onPath = (s: number, r = RP): V3 => [r * Math.sin(stepAng(s)), 0, r * Math
 export const cam2R = (t: number): Cam => {
   const p = prog(t);
   const hy = RISE * (p + 1);
-  const k = easeInOut(seg(t, PULL - 0.15, PULL + 1.3));
+  const k = easeInOut(seg(t, PULL - 0.1, PULL + 1.25));
   const end = ss(t, TOP - 0.6, S2.to);
+  const punch = 0.04 * hits(t, BARS, 6) + 0.1 * hit(t, TOP, 3.5);
   // close: orbit with him, slightly outside and ahead; wide: the whole tower, still turning slowly
   const th = (stepAng(p) * 180) / Math.PI;
   const pos = onPath(p);
   return {
-    viewH: lerp(2.9, 5.2, k) + 1.2 * end,
+    viewH: (lerp(2.9, 5.4, k) + 1.4 * end) * (1 - punch),
     cx: lerp(pos[0], 0, k),
     cz: lerp(pos[2], 0, k),
     cy: lerp(hy + 0.62, hy * 0.62 + 1.0, k) + end * 0.3,
@@ -177,11 +181,11 @@ const WorldR: React.FC<{t: number}> = ({t}) => {
   const gold = look.accent;
   const p = prog(t);
   const arrived = ss(t, TOP - 0.05, TOP + 0.3);
-  const onTop = t >= TOP - 0.15;
+  const onTop = t >= TOP - 0.05;
 
   // feet on the steps (world), the body between them
-  const sA = footStep(p, 0);
-  const sB = footStep(p, 1);
+  const sA = Math.min(footStep(p, 0), NS - 0.6);
+  const sB = Math.min(footStep(p, 1), NS - 0.6);
   const top = (i: number) => (i < 0 ? 0 : stepTop(Math.min(i, NS - 1)));
   // a foot swings from step i0 to i0 + 2 over an arc that clears the step in between
   const footW = (s: number, q: number): V3 => {
@@ -214,7 +218,8 @@ const WorldR: React.FC<{t: number}> = ({t}) => {
     footB: [lb[0] / L, (lb[1] - b.ankle) / L],
   };
   const JOY: Pose = {pelvis: [0, 0.985], lean: -4, head: [0, 0.18], handF: [0.38, 0.9], elbowF: -1, handB: [-0.3, 0.88], elbowB: -1, footF: [0.12, 0], footB: [-0.12, 0]};
-  const pose = onTop ? poseAt(t, [[TOP - 0.15, {...STAND, footF: [0.12, 0], footB: [-0.12, 0]}], [TOP + 0.2, JOY], [TOP + 0.45, {...JOY, pelvis: [0, 1.06]}], [TOP + 0.7, JOY]]) : climb;
+  const arrive = poseAt(t, [[TOP - 0.3, {...STAND, footF: [0.12, 0], footB: [-0.12, 0]}], [TOP + 0.15, JOY], [TOP + 0.4, {...JOY, pelvis: [0, 1.05]}], [TOP + 0.75, JOY]]);
+  const pose = mixPose(climb, arrive, ss(t, TOP - 0.32, TOP - 0.05));
   const topFig = {...fig, ...(() => { const q = onPath(NS - 1); return {x: q[0], z: q[2]}; })(), y: TOPY};
   const beacon = ss(t, TOP + 0.1, TOP + 0.5);
   const tint = mixHex('#38e8ff', '#ffd66b', arrived);
@@ -264,16 +269,13 @@ const WorldR: React.FC<{t: number}> = ({t}) => {
 export const S2L: Panel = {cam: cam2L, World: WorldL};
 export const S2R: Panel = {cam: cam2R, World: WorldR};
 
-export const Over2: React.FC<{t: number; look: Look}> = ({t, look}) => {
-  const o = ss(t, S2.from + 0.05, S2.from + 0.45) * (1 - ss(t, S2.to - 0.45, S2.to - 0.1));
-  return (
-    <>
-      <Txt look={look} x={270} y={300} o={o} glow={0.5}>
-        Motion
-      </Txt>
-      <Txt look={look} x={810} y={300} o={o} glow={0.5}>
-        Action
-      </Txt>
-    </>
-  );
-};
+export const Over2: React.FC<{t: number; look: Look}> = ({t}) => (
+  <>
+    <Title x={270} y={300} t={t} at={S2.from + 0.08} out={S2.to - 0.35}>
+      Motion
+    </Title>
+    <Title x={810} y={300} t={t} at={S2.from + 0.22} out={S2.to - 0.35}>
+      Action
+    </Title>
+  </>
+);

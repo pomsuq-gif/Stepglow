@@ -1,6 +1,6 @@
 import React from 'react';
 import {AbsoluteFill, Audio, staticFile, useCurrentFrame, useVideoConfig} from 'remotion';
-import {seg} from '../nc001-work-smart/anim';
+import {seg, ss} from '../nc001-work-smart/anim';
 import {Cam, Stage, W, H} from '../nc001-work-smart/kit3d';
 import type {Look} from '../nc001-work-smart/looks';
 import {Watermark} from '../../channels/stepglow/Brand';
@@ -27,16 +27,23 @@ const SCENES: SceneDef[] = [
 const darkness = (t: number) => {
   let d = 1 - seg(t, 0, 0.3);
   for (const s of SCENES) {
-    if (s.from > 0 && !s.cut) d = Math.max(d, seg(t, s.from - 0.36, s.from) * (1 - seg(t, s.from, s.from + 0.36)));
+    if (s.from > 0 && !s.cut) d = Math.max(d, seg(t, s.from - 0.3, s.from) * (1 - seg(t, s.from, s.from + 0.3)));
   }
   return Math.max(d, seg(t, SG002_SECONDS - 0.6, SG002_SECONDS - 0.05));
 };
 
 const HALF = W / 2;
 
-const PanelView: React.FC<{p: Panel; t: number; left: boolean}> = ({p, t, left}) => (
+/** zoom transitions: push into the dark at the end of a scene, open out of it at the start; a cut gets a small punch */
+const withTransition = (c: Cam, t: number, sc: SceneDef): Cam => {
+  let f = 1 - 0.24 * ss(t, sc.to - 0.42, sc.to);
+  f *= sc.cut ? 1 - 0.1 * (1 - ss(t, sc.from, sc.from + 0.35)) : 1 - 0.22 * (1 - ss(t, sc.from, sc.from + 0.6));
+  return {...c, viewH: c.viewH * f};
+};
+
+const PanelView: React.FC<{p: Panel; t: number; left: boolean; sc: SceneDef}> = ({p, t, left, sc}) => (
   <div style={{position: 'absolute', left: left ? 0 : HALF, top: 0, width: HALF, height: H, overflow: 'hidden'}}>
-    <Stage look={SG} cam={{...p.cam(t), aspect: HALF / H}} width={HALF} height={H}>
+    <Stage look={SG} cam={{...withTransition(p.cam(t), t, sc), aspect: HALF / H}} width={HALF} height={H}>
       <p.World t={t} />
     </Stage>
   </div>
@@ -50,13 +57,13 @@ export const SG002Full: React.FC<{withAudio?: boolean}> = ({withAudio = true}) =
   return (
     <AbsoluteFill style={{background: SG.bg.edge}}>
       {sc.full ? (
-        <Stage look={SG} cam={sc.full.cam(t)}>
+        <Stage look={SG} cam={withTransition(sc.full.cam(t), t, sc)}>
           <sc.full.World t={t} />
         </Stage>
       ) : (
         <>
-          <PanelView p={sc.left!} t={t} left />
-          <PanelView p={sc.right!} t={t} left={false} />
+          <PanelView p={sc.left!} t={t} left sc={sc} />
+          <PanelView p={sc.right!} t={t} left={false} sc={sc} />
           {/* the seam between the two worlds */}
           <div style={{position: 'absolute', left: HALF - 1.5, top: 0, width: 3, height: H, background: 'linear-gradient(180deg, rgba(150,180,255,0) 0%, rgba(150,180,255,0.35) 30%, rgba(150,180,255,0.35) 70%, rgba(150,180,255,0) 100%)'}} />
           <div style={{position: 'absolute', left: HALF - 0.5, top: 0, width: 1, height: H, background: '#02040a'}} />

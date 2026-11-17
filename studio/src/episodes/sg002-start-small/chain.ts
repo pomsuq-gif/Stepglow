@@ -26,9 +26,6 @@ export const at = (s: number, side = 0): [number, number] => [DIR[0] * s - DIR[1
 export const FLICK = beat(32); // 25.82 — the music comes back with it
 
 const HALF = Math.PI / 2;
-/** time to fall flat from upright, by size (a bigger domino falls slower, ~ sqrt(h)) */
-const T = (i: number) => 0.3 * Math.sqrt(h(i) / H0) * 0.92;
-
 /** contact angle: tilt of domino i at which its top-front corner meets the back face of domino i+1 tilted by phi */
 const contact = (i: number, phi: number) => {
   const p0 = S[i] + th(i) / 2; // pivot of i (front-bottom edge)
@@ -53,15 +50,15 @@ const contact = (i: number, phi: number) => {
   return lo;
 };
 
-/** when each domino starts to tip */
-export const START: number[] = (() => {
-  const st = [FLICK];
-  for (let i = 0; i < N - 1; i++) {
-    const c = contact(i, 0);
-    st.push(st[i] + T(i) * Math.sqrt(c / HALF));
-  }
-  return st;
-})();
+/**
+ * when each domino starts to tip — on the music: quarter-beat steps that stretch as the dominoes grow
+ * (close to what sqrt(h) physics gives), the giant lands on beat 42
+ */
+const START_BEATS = [32, 32.25, 32.5, 33, 33.5, 34.25, 35, 36, 37.25, 38.75];
+export const START: number[] = START_BEATS.map(beat);
+export const LANDED = beat(42);
+/** time to fall flat from upright, chosen so it touches the next one exactly at the next start */
+const T = (i: number) => (i === N - 1 ? LANDED - START[N - 1] : (START[i + 1] - START[i]) / Math.sqrt(contact(i, 0) / HALF));
 
 /** free topple: accelerating */
 const free = (i: number, t: number) => {
@@ -77,5 +74,3 @@ export const tilts = (t: number): number[] => {
   return a;
 };
 
-/** when domino i is knocked flat enough to count as fallen (for the light wave) */
-export const LANDED = START[N - 1] + T(N - 1);

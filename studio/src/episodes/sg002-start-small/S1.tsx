@@ -5,8 +5,9 @@ import {BODIES, Cam, Figure, Glow, Limb, Part, Pose, Txt, reach, solve, useLook,
 import {mat, type Look} from '../nc001-work-smart/looks';
 import {Floor, mixHex} from '../nc001-work-smart/world';
 import {Campfire, charred, chill, warm, WOOD} from './fire';
-import {beat} from './grid';
+import {beat, hit, hits, shake} from './grid';
 import {sitPose, toLocal, toWorld, yawFor} from './rig';
+import {Title} from './title';
 import type {Panel} from './Full';
 
 /**
@@ -15,7 +16,7 @@ import type {Panel} from './Full';
  */
 export const S1 = {from: 0, to: beat(6)};
 
-const FLARE = 1.27; // the bundle lands in the fire
+const FLARE = beat(-6); // 1.74 — the bundle lands in the fire on the beat
 const OUT = beat(0); // the blaze is gone when the bass comes in
 const TOSSES = [-6, -4, -2, 0, 2, 4].map(beat); // right side: a stick lands on every other beat
 
@@ -38,11 +39,17 @@ const PINE = mat('#16233c', '#070b16', {shade: '#0a1020', rim: '#3a5488', rimAmt
 const DIRT = mat('#1c2132', '#080a12', {shade: '#2a2a38', rim: '#7088b8', rimAmt: 0.25, wrap: 0.6});
 
 export const cam1L = (t: number): Cam => {
-  const blaze = ss(t, FLARE - 0.05, FLARE + 0.5) * (1 - ss(t, 4.4, OUT + 0.4));
-  const cold = ss(t, OUT + 0.2, S1.to);
-  return {viewH: 5.35 + 0.9 * blaze - 0.45 * cold, cx: 0.02, cy: 1.22 + 0.35 * blaze - 0.12 * cold, pitch: 9, yaw: YAW, fov: 24};
+  // slow push in, a punch and a shake when the blaze goes up, pull back for its height, a punch in when it dies, then creep in on the cold
+  const blaze = ss(t, FLARE, FLARE + 0.7) * (1 - ss(t, 4.4, OUT + 0.4));
+  const cold = ss(t, OUT, S1.to);
+  const punch = 0.1 * hit(t, FLARE, 5) + 0.07 * hit(t, OUT, 4) + 0.025 * hits(t, [beat(2), beat(4)], 6);
+  const [sx, sy] = shake(t, 0.035 * hit(t, FLARE, 3));
+  return {viewH: (5.5 - 0.25 * ss(t, 0, FLARE) + 1.0 * blaze - 0.7 * cold) * (1 - punch), cx: 0.02 + sx, cy: 1.22 + 0.4 * blaze - 0.15 * cold + sy, pitch: 9, yaw: YAW + 4 * ss(t, 0, S1.to), fov: 24};
 };
-export const cam1R = (t: number): Cam => ({viewH: 5.35 - 0.45 * ss(t, 0, S1.to), cx: 0.02, cy: 1.22 - 0.1 * ss(t, 0, S1.to), pitch: 9, yaw: YAW, fov: 24});
+export const cam1R = (t: number): Cam => {
+  const punch = 0.03 * hits(t, TOSSES, 6);
+  return {viewH: (5.5 - 0.7 * ss(t, 0, S1.to)) * (1 - punch), cx: 0.02, cy: 1.22 - 0.12 * ss(t, 0, S1.to), pitch: 9, yaw: YAW - 4 * ss(t, 0, S1.to), fov: 24};
+};
 
 const pineGeo = (() => {
   const g = new THREE.ConeGeometry(1, 1, 7, 1, false);
@@ -93,7 +100,7 @@ const Seat: React.FC = () => <Limb a={[HX - 0.02, LOG_R, -0.3]} b={[HX + 0.02, L
 
 const intensityL = (t: number) => {
   const flare = easeOut(seg(t, FLARE, FLARE + 0.18));
-  const big = lerp(0.85, 2.7, flare) - 0.6 * ss(t, FLARE + 0.5, 4.2);
+  const big = lerp(0.85, 2.7, flare) - 0.6 * ss(t, FLARE + 0.5, 4.2) + 0.15 * hits(t, [beat(-4), beat(-2)], 3);
   return big * (1 - ss(t, 4.3, OUT - 0.05));
 };
 
@@ -107,12 +114,12 @@ const WorldL: React.FC<{t: number}> = ({t}) => {
 
   // turn to the bundle, hug it, swing it overhead lying across the arms, turn back and throw
   // standing up he shifts onto his feet, in front of the log (sitting origin = the log); back onto the log to huddle
-  const standK = ss(t, 0.22, 0.4) * (1 - ss(t, OUT + 0.15, OUT + 0.75));
+  const standK = ss(t, 0.15, 0.47) * (1 - ss(t, OUT + 0.15, beat(1)));
   const fig0 = {x: HX + STAND_DX * standK, z: 0, s: 1};
   const hugAt: V3 = [BUNDLE_L[0], 0.5, BUNDLE_L[2]];
   const yawB = yawFor(hugAt, 0, fig0, b, -40);
   const dB = toLocal(hugAt, {...fig0, dir: 1, yaw: yawB}, b)[0];
-  const yaw = t < 0.22 ? YAW : t < 0.62 ? lerp(YAW, yawB, easeInOut(seg(t, 0.22, 0.55))) : lerp(yawB, YAW, easeInOut(seg(t, 0.68, 1.0)));
+  const yaw = t < 0.85 ? lerp(YAW, yawB, easeInOut(seg(t, 0.15, 0.68))) : lerp(yawB, YAW, easeInOut(seg(t, 0.92, 1.35)));
   const fig = {...fig0, dir: 1 as const, yaw};
 
   const SIT = sitPose(b, seat, {handF: [0.74, -0.16], handB: [0.68, -0.22]});
@@ -140,25 +147,23 @@ const WorldL: React.FC<{t: number}> = ({t}) => {
 
   const pose = poseAt(t, [
     [0, SIT],
-    [0.22, SIT],
-    [0.4, STAND],
-    [0.55, HUG],
-    [0.62, HUG],
-    [0.8, CARRY],
-    [0.98, OVER],
-    [1.1, THROW],
-    [1.2, THROW],
-    [1.36, {...JOY, pelvis: [-0.06, 0.985]}],
-    [1.48, HOP],
-    [1.66, JOY],
-    [1.86, HOP],
-    [2.04, JOY],
-    [2.36, SHIELD],
-    [3.3, SHIELD2],
-    [4.3, SHIELD],
-    [4.85, LOOK],
-    [OUT + 0.15, LOOK],
-    [OUT + 0.75, HUDDLE],
+    [0.15, SIT],
+    [0.47, STAND],
+    [0.74, HUG],
+    [0.84, HUG],
+    [1.06, CARRY],
+    [1.3, OVER],
+    [1.55, THROW],
+    [1.7, THROW],
+    [1.95, {...JOY, pelvis: [-0.06, 0.985]}],
+    [beat(-5) - 0.12, HOP],
+    [beat(-5) + 0.14, JOY],
+    [2.95, SHIELD],
+    [beat(-3), SHIELD2],
+    [beat(-2), SHIELD],
+    [4.9, LOOK],
+    [OUT + 0.2, LOOK],
+    [beat(1), HUDDLE],
   ]);
   const j = solve(pose, b);
 
@@ -166,32 +171,32 @@ const WorldL: React.FC<{t: number}> = ({t}) => {
   const hF = toWorld(j.hF, b.shZ, fig, b);
   const hB = toWorld(j.hB, -b.shZ, fig, b);
   const mid: V3 = [(hF[0] + hB[0]) / 2, (hF[1] + hB[1]) / 2, (hF[2] + hB[2]) / 2];
-  const tip = ss(t, 0.66, 0.92);
+  const tip = ss(t, 0.9, 1.25);
   // hugging: hands at its middle; lying across: it rests on top of the hands
   const held: V3 = [mid[0], mid[1] - lerp(0.5, -(BR + handR), tip), mid[2]];
   const yawRad = (-yaw * Math.PI) / 180;
   let bp: V3 = BUNDLE_L;
   let rot: [number, number, number] = [0, 0, 0];
-  if (t >= 0.56 && t < 1.1) {
-    const lift = ss(t, 0.56, 0.64);
+  if (t >= 0.8 && t < 1.55) {
+    const lift = ss(t, 0.8, 0.9);
     bp = [lerp(BUNDLE_L[0], held[0], lift), lerp(0, held[1], lift), lerp(BUNDLE_L[2], held[2], lift)];
     // lying across = its axis along the hero's local z: tip it over around the hero's facing direction
     rot = [0, yawRad, 0];
   }
-  const fly = seg(t, 1.1, FLARE);
+  const fly = seg(t, 1.55, FLARE);
   const RELEASE: V3 = (() => {
     const jj = solve(THROW, b);
     const a = toWorld(jj.hF, b.shZ, {...fig0, dir: 1, yaw: YAW}, b);
     const c = toWorld(jj.hB, -b.shZ, {...fig0, dir: 1, yaw: YAW}, b);
     return [(a[0] + c[0]) / 2, (a[1] + c[1]) / 2 + BR + handR, (a[2] + c[2]) / 2];
   })();
-  const flying = t >= 1.1 && t < FLARE;
+  const flying = t >= 1.55 && t < FLARE;
   const fp: V3 = [lerp(RELEASE[0], FX, fly), lerp(RELEASE[1], 0.07 + BR, fly) + Math.sin(fly * Math.PI) * 0.28, lerp(RELEASE[2], 0, fly)];
 
   const cold = ss(t, 4.4, OUT + 0.6);
   const tint = t < FLARE ? '#ff8a2e' : mixHex('#ffb43a', '#7f8fb0', cold);
   const energy = t < FLARE ? 0.62 : lerp(lerp(1, 0.8, ss(t, 2, 4.2)), 0.16, cold);
-  const shiver = t > OUT + 0.8 ? Math.sin(t * 41) * 0.004 : 0;
+  const shiver = t > beat(1) ? Math.sin(t * 41) * 0.004 * (0.5 + 0.5 * hits(t, [beat(2), beat(3), beat(4), beat(5)], 3)) : 0;
   const head = toWorld(j.head, 0, fig, b);
 
   return (
@@ -201,7 +206,7 @@ const WorldL: React.FC<{t: number}> = ({t}) => {
       <Glow p={[FX, 1.4, -1.6]} w={5} h={5} color={mixHex('#3b5a9a', '#ff7a2a', Math.min(1, I / 2.7) * 0.8)} a={0.24} />
       <Seat />
       <Campfire x={FX} ring={RING} t={t} I={I} seed={1.3} burnt={ss(t, 2.0, OUT)} ember={t > OUT - 0.4 ? 1 - seg(t, OUT, 9.3) * 0.7 : 0} smoke={ss(t, OUT - 0.5, OUT + 0.3) * (1.6 - ss(t, 8.3, 9.3) * 0.6)} smokeT={t - OUT + 0.5} />
-      {t < 1.1 ? (
+      {t < 1.55 ? (
         // the tilt from upright to lying across happens around the hero's facing axis
         <group position={bp} rotation={rot}>
           <group rotation={[(tip * Math.PI) / 2, 0, 0]}>
@@ -251,12 +256,12 @@ const WorldR: React.FC<{t: number}> = ({t}) => {
     return STICKS.map((_, i) => i).sort((a, c) => Math.abs(toLocal(stickTop(a), f, b)[2] + b.shZ) - Math.abs(toLocal(stickTop(c), f, b)[2] + b.shZ));
   }, [b]);
 
-  const n = TOSSES.findIndex((L) => t < L + 0.5);
+  const n = TOSSES.findIndex((L) => t < L + 0.27);
   const L = n >= 0 ? TOSSES[n] : 99;
   const target = stickTop(n >= 0 ? order[n] : 0);
   // turn a little so the stick lies in the plane of the back hand
   const yawG = yawFor(target, -b.shZ, fig0, b, YAW);
-  const yaw = lerp(YAW, yawG, pulse(t, L - 1.08, L - 0.88, L - 0.35));
+  const yaw = lerp(YAW, yawG, pulse(t, L - 1.0, L - 0.76, L - 0.3));
   const fig = {...fig0, dir: 1 as const, yaw};
 
   const SIT = sitPose(b, seat, {handF: [0.74, -0.16], handB: [0.68, -0.22]});
@@ -270,20 +275,20 @@ const WorldR: React.FC<{t: number}> = ({t}) => {
   const pose =
     n >= 0
       ? poseAt(t, [
-          [L - 1.12, SIT],
-          [L - 0.88, {...GRAB, handB: grabH}],
-          [L - 0.8, {...GRAB, handB: grabH}],
-          [L - 0.5, {...PULL, handB: pullH}],
+          [L - 1.0, SIT],
+          [L - 0.76, {...GRAB, handB: grabH}],
+          [L - 0.68, {...GRAB, handB: grabH}],
+          [L - 0.42, {...PULL, handB: pullH}],
           [L - 0.18, TOSS],
-          [L + 0.1, TOSS],
-          [L + 0.42, SIT],
+          [L + 0.02, TOSS],
+          [L + 0.27, SIT],
         ])
       : SIT;
   const j = solve(pose, b);
   const hand = toWorld(j.hB, -b.shZ, fig, b);
 
-  const gone = STICKS.map((_, i) => TOSSES.some((Lx, m) => order[m] === i && t >= Lx - 0.8));
-  const holding = n >= 0 && t >= L - 0.8 && t < L - 0.18;
+  const gone = STICKS.map((_, i) => TOSSES.some((Lx, m) => order[m] === i && t >= Lx - 0.68));
+  const holding = n >= 0 && t >= L - 0.68 && t < L - 0.18;
   const landed = TOSSES.filter((Lx) => t >= Lx);
   const fly = n >= 0 ? seg(t, L - 0.18, L) : 0;
   const top = hand[1] - handR * k * 0.6;
@@ -319,16 +324,13 @@ const WorldR: React.FC<{t: number}> = ({t}) => {
 export const S1L: Panel = {cam: cam1L, World: WorldL};
 export const S1R: Panel = {cam: cam1R, World: WorldR};
 
-export const Over1: React.FC<{t: number; look: Look}> = ({t, look}) => {
-  const o = ss(t, 0.05, 0.45) * (1 - ss(t, S1.to - 0.45, S1.to - 0.1));
-  return (
-    <>
-      <Txt look={look} x={270} y={300} o={o} glow={0.5}>
-        Intensity
-      </Txt>
-      <Txt look={look} x={810} y={300} o={o} glow={0.5}>
-        Consistency
-      </Txt>
-    </>
-  );
-};
+export const Over1: React.FC<{t: number; look: Look}> = ({t}) => (
+  <>
+    <Title x={270} y={300} t={t} at={0.1} out={S1.to - 0.35}>
+      Intensity
+    </Title>
+    <Title x={810} y={300} t={t} at={0.25} out={S1.to - 0.35}>
+      Consistency
+    </Title>
+  </>
+);

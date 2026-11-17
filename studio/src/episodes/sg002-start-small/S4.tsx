@@ -7,6 +7,8 @@ import {FLICK, LANDED, N, START, S as SPOS, at, h, th, tilts} from './chain';
 import {allIdx, Domino} from './dominoes';
 import {B, FACE, FLICK_X, HAND_R, HS, K, S_KNEEL, heroAt} from './hero34';
 import {Mirror} from './mirror';
+import {hit, hits, shake} from './grid';
+import {Title} from './title';
 import {S3} from './S3';
 import type {Panel} from './Full';
 
@@ -64,7 +66,11 @@ export const cam4 = (t: number): Cam => {
     yaw: lerp(a.yaw ?? 0, b.yaw ?? 0, q),
     fov: lerp(a.fov ?? 16, b.fov ?? 16, q),
   });
-  return mix(mix(macro, ride, track), end, e);
+  const c = mix(mix(macro, ride, track), end, e);
+  // each big domino lands with a punch; the giant shakes the camera
+  const punch = 0.05 * hit(t, FLICK, 6) + 0.035 * hits(t, START.slice(5), 5) + 0.06 * hit(t, LANDED, 3);
+  const [sx, sy] = shake(t, 0.12 * hit(t, LANDED, 3.5));
+  return {...c, viewH: c.viewH * (1 - punch), cx: (c.cx ?? 0) + sx, cy: c.cy + sy};
 };
 
 const World4: React.FC<{t: number}> = ({t}) => {
@@ -79,9 +85,10 @@ const World4: React.FC<{t: number}> = ({t}) => {
     [FLICK + 1.0, KNEEL_UP],
     [FLICK + 1.6, WATCH],
   ]);
-  // while on all fours the front hand follows the fingertip exactly
-  const fours = t >= S4.from + 0.45 && t < FLICK + 0.55;
-  const p2: Pose = fours ? crawl(fx) : pose;
+  // while on all fours the front hand follows the fingertip exactly (blended in and out, no jumps)
+  const w = ss(t, S4.from + 0.3, S4.from + 0.5) * (1 - ss(t, FLICK + 0.45, FLICK + 0.65));
+  const fh = crawl(fx).handF;
+  const p2: Pose = {...pose, handF: [lerp(pose.handF[0], fh[0], w), lerp(pose.handF[1], fh[1], w)]};
   void solve;
 
   const lit = allIdx.map((i) => ss(t, START[i] + 0.04, START[i] + 0.22));
@@ -117,8 +124,8 @@ const World4: React.FC<{t: number}> = ({t}) => {
 
 export const S4F: Panel = {cam: cam4, World: World4};
 
-export const Over4: React.FC<{t: number; look: Look}> = ({t, look}) => (
-  <Txt look={look} x={540} y={300} o={1 - ss(t, 33.0, 33.4)} glow={0.5}>
+export const Over4: React.FC<{t: number; look: Look}> = ({t}) => (
+  <Title x={540} y={300} t={t} at={S4.from - 1} out={33.0}>
     Start Small
-  </Txt>
+  </Title>
 );
