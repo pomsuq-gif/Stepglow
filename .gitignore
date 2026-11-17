@@ -1,0 +1,15 @@
+# render outputs
+studio/out/
+*.mp4
+*.mov
+
+# node
+node_modules/
+
+# local refs (reference Shorts are not committed)
+refs/*
+!refs/README.md
+
+# render chunks
+review/chunks-*/
+review/*/chunks-*/
