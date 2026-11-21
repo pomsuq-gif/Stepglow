@@ -18,14 +18,14 @@ export const SG003_FRAMES = Math.round(SG003_SECONDS * SG003_FPS);
 const B = beat;
 type C = Required<Pick<Cam, 'viewH' | 'cx' | 'cy' | 'pitch' | 'yaw' | 'fov'>>;
 const mixC = (a: C, b: C, k: number): C => ({viewH: lerp(a.viewH, b.viewH, k), cx: lerp(a.cx, b.cx, k), cy: lerp(a.cy, b.cy, k), pitch: lerp(a.pitch, b.pitch, k), yaw: lerp(a.yaw, b.yaw, k), fov: lerp(a.fov, b.fov, k)});
-const WIDE: C = {viewH: 8.6, cx: 0, cy: 2.0, pitch: 6, yaw: 0, fov: 22};
+const WIDE: C = {viewH: 7.9, cx: 0, cy: 1.75, pitch: 6, yaw: 0, fov: 22};
 
 /** one take broken by hard cuts on the beat: wide lineup → (drop, flash) medium on Obsession → each quitter → Obsession's fall → Discipline → wide */
 export const cam = (t: number): Cam => {
   let c: C;
   if (t < B(0)) {
     const open = easeInOut(seg(t, 0, 1.7));
-    c = {...WIDE, viewH: lerp(7.9, 8.6, open) - 1.1 * ss(t, B(-4), B(-0.05)), cx: 0.1 * ss(t, B(-4), B(0)), cy: lerp(2.15, 2.0, open), yaw: lerp(-5, 5, seg(t, 0, B(0)))};
+    c = {...WIDE, viewH: lerp(7.2, 7.9, open) - 0.9 * ss(t, B(-4), B(-0.05)), cx: 0.1 * ss(t, B(-4), B(0)), cy: lerp(1.9, 1.75, open), yaw: lerp(-5, 5, seg(t, 0, B(0)))};
   } else if (t < B(12.5)) {
     const follow = pulse(t, B(2.8), B(3.8), B(5.6));
     c = {viewH: lerp(3.9, 4.3, ss(t, B(0), B(12.5))) + 0.5 * follow, cx: 0.05 - 0.15 * follow, cy: 2.0 - 0.45 * follow, pitch: 3 + 4 * follow, yaw: lerp(14, -12, ss(t, B(3), B(12.5))), fov: 24};
@@ -38,12 +38,12 @@ export const cam = (t: number): Cam => {
     c = {viewH: lerp(4.9, 4.4, k), cx: lerp(1.25, 1.12, k), cy: 1.62, pitch: 2, yaw: lerp(24, 15, k), fov: 26};
   } else if (t < B(39.5)) {
     const f = ss(t, OBS_REL, OBS_REL + 1.3);
-    c = {viewH: lerp(4.0, 3.7, f), cx: 0.05, cy: lerp(2.0, 1.55, f), pitch: lerp(3, 9, f), yaw: lerp(-8, 6, ss(t, B(32), B(39.5))), fov: 24};
+    c = {viewH: lerp(4.0, 4.3, f), cx: lerp(0.05, 0.2, f), cy: lerp(2.0, 1.45, f), pitch: lerp(3, 10, f), yaw: lerp(-8, 6, ss(t, B(32), B(39.5))), fov: 24};
     c.viewH *= 1 - 0.05 * hit(t, OBS_REL + 1.0, 6);
   } else {
     const k = easeInOut(seg(t, B(41.3), B(44.6)));
     const hero: C = {viewH: lerp(3.3, 3.0, ss(t, B(39.5), B(41.5))), cx: 0.82, cy: 1.95, pitch: -5, yaw: lerp(12, 6, ss(t, B(39.5), B(41.5))), fov: 26};
-    c = mixC(hero, {...WIDE, viewH: 8.4, cy: 1.85, pitch: 7, yaw: -4}, k);
+    c = mixC(hero, {...WIDE, viewH: 7.9, cy: 1.7, pitch: 7, yaw: -4}, k);
   }
   const [sx, sy] = shake(t, 0.05 * hit(t, OBS_SNAP, 4) + 0.03 * hit(t, B(0), 5) + 0.025 * hit(t, OBS_REL + 1.0, 6));
   return {...c, cx: c.cx + sx, cy: c.cy + sy};
@@ -98,10 +98,10 @@ const Over: React.FC<{t: number}> = ({t}) => {
         }
         const size = clamp(0.2 * ppu, 44, 84);
         const nsize = clamp(0.105 * ppu, 24, 44);
-        const nameO = s.active ? 0.9 : 0.5;
+        const nameO = (s.active ? 0.9 : 0.5) * (1 - ss(ny, 1590, 1650));
         return (
           <React.Fragment key={i}>
-            <Num x={x} y={y} size={size} color={color} glow={glow} o={s.active ? 1 : 0.62} pop={s.active || i === 2 ? pop : 0}>
+            <Num x={x} y={y} size={size} color={color} glow={glow} o={(s.active ? 1 : 0.62) * ss(y, 320, 400)} pop={s.active || i === 2 ? pop : 0}>
               {s.count}
             </Num>
             <div style={{position: 'absolute', left: nx, top: ny, transform: 'translate(-50%, -50%)', fontFamily: 'Sora', fontWeight: 600, fontSize: nsize, color: i === 3 ? mixHex('#e8eefc', TINT.gold, gold) : '#c9d4ec', opacity: nameO, letterSpacing: '0.01em', textShadow: '0 2px 8px rgba(0,0,0,0.8)'}}>{NAMES[i]}</div>

@@ -8,7 +8,7 @@ import {ANK, fallTime, hang, hugKnees, LEG, mixRig, phone, rigAt, stand, sulk, t
  * The five on the bar, left to right, as in the reference. Every rep is on the music grid:
  * Obsession one rep a beat (later every half beat), Ego a beat, Talent 1.5 beats, Discipline 2.5 beats, always.
  */
-export const SLOT = 0.82;
+export const SLOT = 0.76;
 export const NAMES = ['Motivation', 'Ego', 'Obsession', 'Discipline', 'Talent'] as const;
 export const XS = [-2, -1, 0, 1, 2].map((i) => i * SLOT);
 export const TINT = {mot: '#ff8a2e', ego: '#ff4fd8', obs: '#ff3b30', dis: '#38e8ff', tal: '#a98bff', gold: '#ffd66b', idle: '#6f7c99', dead: '#3a1f26'};
@@ -131,21 +131,21 @@ const kneel = (z: number): Rig => ({
   ],
 });
 export const LYING: Rig = {
-  pel: [0.3, 0.13, 0.3],
-  up: [-0.78, 0.13, 0.6],
+  pel: [0.4, 0.13, 0.38],
+  up: [-1, 0.12, 0.18],
   fwd: [0, 1, 0],
   head: [0, 0.03, 0],
   hand: [
-    [-0.2, 0.08, 0.6],
-    [-0.08, 0.08, 0.2],
+    [-0.2, 0.08, 0.7],
+    [0.05, 0.08, 0.05],
   ],
   elbow: [
     [0, 1, 0],
     [0, 1, 0],
   ],
   foot: [
-    [0.95, ANK, 0.2],
-    [0.86, ANK, 0.02],
+    [1.1, ANK, 0.46],
+    [1.05, ANK, 0.28],
   ],
   knee: [
     [0, 1, 0],

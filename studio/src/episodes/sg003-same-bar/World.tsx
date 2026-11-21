@@ -4,7 +4,6 @@ import {clamp, fract, lerp, rnd, ss} from '../nc001-work-smart/anim';
 import {Ball, Glow, Limb, Part, roundedBox, useLook, type V3} from '../nc001-work-smart/kit3d';
 import {mat, type Mat} from '../nc001-work-smart/looks';
 import {mixHex} from '../nc001-work-smart/world';
-import {Mirror} from '../sg002-start-small/mirror';
 import {beat} from './grid';
 import {CAST, DIS_GOLD, OBS_DROPARM, OBS_REL, OBS_SNAP, TAL_PHONE, TINT, XS, obsession, talent, type State} from './plan';
 import {BAR_Y, HB, K3, Man, add, len, mix3, mul, norm, solve3, sub, W3, type J3, type Look3} from './rig3';
@@ -13,7 +12,9 @@ const B = beat;
 const G = 9.8;
 const METAL = mat('#dfe7f7', '#59688c', {shade: '#323d5c', rim: '#f0f5ff', rimAmt: 0.55, rimPow: 2.2, wrap: 0.55, spec: 0.9});
 const POST = mat('#7d8bad', '#1b2338', {shade: '#1d2540', rim: '#b8c8f0', rimAmt: 0.5, rimPow: 2.2, wrap: 0.5, spec: 0.4});
-const HALF = 2.42;
+const HALF = 2.2;
+const floorGeo = new THREE.PlaneGeometry(40, 40);
+const FLOOR = mat('#131b30', '#131b30', {shade: '#0a0f1d', rim: '#24345c', rimAmt: 0.25, rimPow: 3, wrap: 0.4});
 
 /** quantised material helpers so a colour that drifts every frame does not build a new shader every frame */
 const q = (x: number, n = 24) => Math.round(clamp(x) * n) / n;
@@ -269,7 +270,8 @@ export const World: React.FC<{t: number}> = ({t}) => {
   const pool = clamp((Math.min(t, OBS_REL) - OBS_SNAP) / 14) * (1 - 0.7 * ss(t, OBS_REL, OBS_REL + 3));
   return (
     <>
-      <Mirror amt={0.15} poolR={4.2} pool="#16223e" res={[720, 1280]} far={20} />
+      <Part geo={floorGeo} m={FLOOR} y0={-1} y1={1} rotation={[-Math.PI / 2, 0, 0]} fade={{z0: -2.5, z1: -10, zmax: 1}} />
+      <Glow p={[0, 0.006, 0.2]} w={7} h={3.4} color="#2a3f72" a={0.35} flat />
       <Glow p={[0, 1.8, -3.2]} w={9} h={6} color={look.bg.glow} a={0.32} />
       <Spots st={st} />
       <Motes t={t} />
