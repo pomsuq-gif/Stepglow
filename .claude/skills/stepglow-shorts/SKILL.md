@@ -79,6 +79,11 @@ description: Production workflow for STEPGLOW (@Stepglow) — an English YouTube
   падение с настоящим касанием следующей, `tilts(t)`), `dominoes.tsx` (`Domino` с точками, которые
   загораются золотом), `rig.ts` (`toWorld` — точка руки героя в мир, `sitPose`). Сцена с `cut: true`
   в `Full.tsx` начинается склейкой, без затемнения.
+- SG003 добавил `sg003-same-bar/rig3.tsx` — **3D-стикмен** (`Man` + `solve3`): цели кистей/ступней и «полюса» локтей/коленей
+  в 3D, поэтому возможна фронтальная поза (подтягивания с локтями в стороны, сидя по-турецки, лёжа на спине); `noArm` —
+  отломанная рука с раскалённым плечом, `cracks` — светящиеся трещины на торсе; `hang(lift)` — вис на перекладине
+  (голова при подъёме уходит за перекладину), `stand`, `hugKnees`, `sulk`, `phone`, `rigAt` — ключи поз во времени.
+  `plan.ts` — герой = функция времени → поза, огонёк, счётчик (повторы стоят на сетке бита).
 - Оформление — `studio/src/channels/stepglow/Brand.tsx`: `SG-AvatarA/B/C`, `SG-BannerA/B/C`,
   `SG-Watermark`, компонент `Watermark`.
 

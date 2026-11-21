@@ -337,7 +337,7 @@ export const reach = (p: Pose, b: Body, x: number, y: number): P2 => {
   return [(x - sh[0]) / A, (y - sh[1]) / A];
 };
 
-const torsoGeo = (hips: number, chest: number, L: number) => {
+export const torsoGeo = (hips: number, chest: number, L: number) => {
   const pts: THREE.Vector2[] = [];
   const prof = (u: number) => hips + (chest - hips) * (u * u * (3 - 2 * u));
   const n = 10;
