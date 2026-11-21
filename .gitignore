@@ -17,3 +17,6 @@ review/*/chunks-*/
 # music taken from reference Shorts (local only)
 studio/public/*/music.m4a
 review/*/render.log
+review/*/*.png
+review/*/sheet.jpg
+review/*/frames.jpg
