@@ -52,6 +52,8 @@ export type PlankOpts = {
   lie?: number;
   /** extra shoulder height (bobs, jitter), local units */
   dy?: number;
+  /** each hand 0..1 from its forearm spot to under the shoulder (hands are planted before the push); default = high */
+  plant?: [number, number];
   /** head turn toward the camera (−1..1) and nod (+ = down) */
   look?: number;
   nod?: number;
@@ -70,7 +72,9 @@ export const plank = (o: PlankOpts = {}): Rig => {
   const pel: V3 = [shc[0] - dir[0] * SHC, Math.max(PB.tr[0] + 0.005, shc[1] - dir[1] * SHC - 0.13 * sag), 0];
   const up = norm([shc[0] - pel[0], shc[1] - pel[1], 0]);
   const x = shc[0];
+  const pl = o.plant ?? [h, h];
   const hand = (sd: number): V3 => {
+    const h = clamp(pl[sd < 0 ? 0 : 1]);
     const fore: V3 = [x - 0.289, R_HD, sd * 0.09];
     const high: V3 = [x - 0.02, R_HD, sd * 0.19];
     const flat: V3 = [x - 0.42, R_HD, sd * 0.27];
@@ -78,6 +82,7 @@ export const plank = (o: PlankOpts = {}): Rig => {
     return [lerp(a[0], flat[0], lie), R_HD, lerp(a[2], flat[2], lie)];
   };
   const elbow = (sd: number): V3 => {
+    const h = Math.max(clamp(o.high ?? 0), clamp(pl[sd < 0 ? 0 : 1]));
     const fore: V3 = [0.35, -1, sd * 0.15];
     const high: V3 = [0.7, 0.1, sd * 1];
     const flat: V3 = [0.1, 0.4, sd * 1];
@@ -173,23 +178,32 @@ export const disciplined = (t: number): State => {
 export const ego = (t: number): State => {
   const show = Math.max(0, Math.sin(((t - B(-14)) / (2 * BEAT)) * Math.PI * 2)) * ss(t, B(-14), B(-13)) * (1 - ss(t, B(-8), B(-7)));
   const hurt = ss(t, HURT - 0.05, HURT + 0.15);
-  const strain = hurt * (t < UP ? 1 : 0.18);
-  const sink = t < UP ? gap(t) * 0.16 + 0.06 * ss(t, HURT, UP - 0.1) : 0;
-  const k = clamp((t - UP) / 0.2);
-  const high = t < UP ? 0 : 1 - Math.pow(1 - k, 3) + 0.08 * Math.sin(k * Math.PI);
+  const tp = Math.min(t, UP);
+  const strainPre = hurt;
+  const sinkPre = gap(tp) * 0.16 + 0.06 * ss(tp, HURT, UP - 0.1);
+  // the push (0.42 s): both hands planted under the shoulders one after the other, then he drives himself up;
+  // everything he carried before the drop (sag, sink, the bowed head, the shaking) blends out over it — no jump
+  const k = clamp((t - UP) / 0.42);
+  const u = t < UP ? 0 : easeInOut(clamp(k / 0.7));
+  const x = clamp((k - 0.15) / 0.85);
+  const high = t < UP ? 0 : 1 - Math.pow(1 - x, 3) + 0.06 * Math.sin(x * Math.PI);
+  const plant: [number, number] = [ss(k, 0, 0.3), ss(k, 0.1, 0.4)];
+  const strain = lerp(strainPre, 0.18 * hurt, u);
   // after the drop: a small push on every beat, rock-solid in between
   const beatPush = t > UP + 0.3 ? 0.012 * Math.exp(-(((t - UP) / BEAT) % 1) * 6) : 0;
-  const rig = plank({high: Math.min(1.05, high), sag: t < UP ? 0.35 * hurt : 0, dy: (t < UP ? jit(t, 5) * 0.025 * strain - sink : jit(t, 5) * 0.004 + beatPush) + 0.02 * show, nod: t < UP ? 0.7 * hurt : -0.4, look: -0.25 * show});
+  const jitA = lerp(0.025 * strainPre, 0.004, u);
+  const rig = plank({high: Math.min(1.05, high), plant, sag: 0.35 * hurt * (1 - u), dy: jit(t, 5) * jitA - sinkPre * (1 - u) + beatPush + 0.02 * show, nod: lerp(0.7 * hurt, -0.4, u), look: -0.25 * show});
   const pulse = t > UP ? 0.15 * Math.exp(-(((t - UP) / BEAT) % 1) * 4) : 0;
   return base(3, rig, {energy: t < HURT ? 0.95 : t < UP ? 0.7 + 0.3 * (1 - gap(t)) : 1 + pulse, tint: mixHex(TINT.ego, TINT.hurt, hurt), strain});
 };
 
-/** Obsessed: never stops, follows Ego up half a beat later, the strain creeps in at the end but he holds */
 export const obsessed = (t: number): State => {
-  const k = clamp((t - OBS_UP) / 0.35);
-  const high = t < OBS_UP ? 0 : easeInOut(k);
+  // hands first, one then the other, then up on straight arms (0.6 s)
+  const k = clamp((t - OBS_UP) / 0.6);
+  const high = t < OBS_UP ? 0 : easeInOut(clamp((k - 0.25) / 0.75));
+  const plant: [number, number] = [ss(k, 0, 0.35), ss(k, 0.15, 0.5)];
   const strain = 0.12 * ss(t, B(-3), B(0)) + 0.35 * ss(t, B(5), B(13));
-  const rig = plank({high, dy: jit(t, 7) * 0.014 * strain, sag: 0.25 * ss(t, B(6), B(13)), nod: 0.2 * strain});
+  const rig = plank({high, plant, dy: jit(t, 7) * 0.014 * strain, sag: 0.25 * ss(t, B(6), B(13)), nod: 0.2 * strain});
   const flick = strain > 0.2 ? 0.12 * Math.max(0, Math.sin(t * 23) * Math.sin(t * 9.1)) : 0;
   return base(4, rig, {energy: 0.95 - flick, tint: TINT.obs, strain});
 };
