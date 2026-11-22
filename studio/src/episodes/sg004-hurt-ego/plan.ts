@@ -5,6 +5,13 @@ import {HB, norm, solve3, type Rig} from '../sg003-same-bar/rig3';
 import type {Body} from '../nc001-work-smart/kit3d';
 import {BEAT, beat, gap} from './grid';
 
+/** the stutter as a slow struggle, not jerks: the gaps averaged over ~0.25 s */
+const gapS = (t: number) => {
+  let m = 0;
+  for (let i = 0; i < 11; i++) m += gap(t - 0.16 + i * 0.022);
+  return m / 11;
+};
+
 /**
  * SG004 — five in a plank, one lane each, far to near as in the reference:
  * Motivated · Talented · Disciplined · Ego · Obsessed. Every quit sits on the beat the reference uses.
@@ -34,14 +41,15 @@ const ANK = PB.ankle;
 /* ───────────── the plank as a rig ───────────── */
 
 const SHC = PB.torso * 0.92;
-const L = LEG * 0.985 + SHC;
+const L = LEG * 0.997 + SHC;
 export const FX = 0.55;
 const R_EL = PB.ar[1];
 const R_HD = PB.ar[2];
 /** shoulder heights: on the forearms, on straight arms, lying flat */
-const SH_LOW = PB.arm + R_EL;
+/** on the forearms the shoulders sit a little lower than an upper arm, so the elbows rest slightly out (and slide smoothly) */
+const SH_LOW = PB.arm * 0.9 + R_EL;
 const SH_HIGH = Math.sqrt((PB.arm + PB.fore) ** 2 * 0.993 ** 2 - 0.0004) + R_HD - 0.01;
-const SH_LIE = PB.headR + 0.01;
+const SH_LIE = PB.headR + 0.025;
 
 export type PlankOpts = {
   /** 0 = on the forearms, 1 = on straight arms */
@@ -69,25 +77,46 @@ export const plank = (o: PlankOpts = {}): Rig => {
   const ank: V3 = [FX, ANK, 0];
   const shc: V3 = [ank[0] + dir[0] * L, ank[1] + dir[1] * L, 0];
   const sag = clamp(o.sag ?? 0) * (1 - lie);
-  const pel: V3 = [shc[0] - dir[0] * SHC, Math.max(PB.tr[0] + 0.005, shc[1] - dir[1] * SHC - 0.13 * sag), 0];
+  // hips sinking: the legs stay straight and swing down about the feet (the knees never push into the floor)
+  const LL = LEG * 0.997;
+  const pel0: V3 = [shc[0] - dir[0] * SHC, shc[1] - dir[1] * SHC, 0];
+  const py = Math.max(PB.tr[0] + 0.02, pel0[1] - 0.13 * sag);
+  const sp = clamp((py - ANK) / LL, 0, 0.95);
+  const pel: V3 = [ank[0] - Math.sqrt(1 - sp * sp) * LL, py, 0];
   const up = norm([shc[0] - pel[0], shc[1] - pel[1], 0]);
-  const x = shc[0];
+  // the shoulders exactly where solve3 will put them
+  const sc: V3 = [pel[0] + up[0] * SHC, pel[1] + up[1] * SHC, 0];
+  const x = sc[0];
   const pl = o.plant ?? [h, h];
+  /**
+   * On the forearms the elbow stays ON the floor: when the shoulders sink below an upper-arm length
+   * the elbow slides back and out along the floor (never through it), and the forearm lies flat in front of it.
+   */
+  const foreSpot = (sd: number) => {
+    const drop = Math.max(0, sc[1] - R_EL);
+    const d = Math.sqrt(Math.max(0, PB.arm * PB.arm - drop * drop));
+    const E: V3 = [x + d * 0.55, R_EL, sd * (PB.shZ + d * 0.83)];
+    const H: V3 = [E[0] - PB.fore * 0.96, R_HD, E[2] - sd * PB.fore * 0.28];
+    const sh: V3 = [x, sc[1], sd * PB.shZ];
+    // the pole points from the shoulder to the elbow spot (straight down when the shoulders are up)
+    const pole: V3 = d > 0.02 ? [E[0] - sh[0], E[1] - sh[1], E[2] - sh[2]] : [0.35, -1, sd * 0.15];
+    return {E, H, pole};
+  };
   const hand = (sd: number): V3 => {
-    const h = clamp(pl[sd < 0 ? 0 : 1]);
-    const fore: V3 = [x - 0.289, R_HD, sd * 0.09];
-    const high: V3 = [x - 0.02, R_HD, sd * 0.19];
+    const k = clamp(pl[sd < 0 ? 0 : 1]);
+    const fore = foreSpot(sd).H;
+    const high: V3 = [x - 0.02, R_HD, sd * 0.17];
     const flat: V3 = [x - 0.42, R_HD, sd * 0.27];
-    const a: V3 = [lerp(fore[0], high[0], h), R_HD, lerp(fore[2], high[2], h)];
+    const a: V3 = [lerp(fore[0], high[0], k), R_HD, lerp(fore[2], high[2], k)];
     return [lerp(a[0], flat[0], lie), R_HD, lerp(a[2], flat[2], lie)];
   };
   const elbow = (sd: number): V3 => {
-    const h = Math.max(clamp(o.high ?? 0), clamp(pl[sd < 0 ? 0 : 1]));
-    const fore: V3 = [0.35, -1, sd * 0.15];
+    const k = Math.max(h, clamp(pl[sd < 0 ? 0 : 1]));
+    const fore = foreSpot(sd).pole;
     const high: V3 = [0.7, 0.1, sd * 1];
     const flat: V3 = [0.1, 0.4, sd * 1];
-    const a = [0, 1, 2].map((k) => lerp(fore[k], high[k], h)) as V3;
-    return [0, 1, 2].map((k) => lerp(a[k], flat[k], lie)) as V3;
+    const a = [0, 1, 2].map((i) => lerp(fore[i], high[i], k)) as V3;
+    return [0, 1, 2].map((i) => lerp(a[i], flat[i], lie)) as V3;
   };
   const look = o.look ?? 0;
   const nod = (o.nod ?? 0) + 0.04 * lie;
@@ -180,7 +209,7 @@ export const ego = (t: number): State => {
   const hurt = ss(t, HURT - 0.05, HURT + 0.15);
   const tp = Math.min(t, UP);
   const strainPre = hurt;
-  const sinkPre = gap(tp) * 0.16 + 0.06 * ss(tp, HURT, UP - 0.1);
+  const sinkPre = gapS(tp) * 0.22 + 0.05 * ss(tp, HURT, UP - 0.1);
   // the push (0.42 s): both hands planted under the shoulders one after the other, then he drives himself up;
   // everything he carried before the drop (sag, sink, the bowed head, the shaking) blends out over it — no jump
   const k = clamp((t - UP) / 0.42);
@@ -194,7 +223,7 @@ export const ego = (t: number): State => {
   const jitA = lerp(0.025 * strainPre, 0.004, u);
   const rig = plank({high: Math.min(1.05, high), plant, sag: 0.35 * hurt * (1 - u), dy: jit(t, 5) * jitA - sinkPre * (1 - u) + beatPush + 0.02 * show, nod: lerp(0.7 * hurt, -0.4, u), look: -0.25 * show});
   const pulse = t > UP ? 0.15 * Math.exp(-(((t - UP) / BEAT) % 1) * 4) : 0;
-  return base(3, rig, {energy: t < HURT ? 0.95 : t < UP ? 0.7 + 0.3 * (1 - gap(t)) : 1 + pulse, tint: mixHex(TINT.ego, TINT.hurt, hurt), strain});
+  return base(3, rig, {energy: t < HURT ? 0.95 : t < UP ? 0.7 + 0.3 * (1 - gapS(t)) : 1 + pulse, tint: mixHex(TINT.ego, TINT.hurt, hurt), strain});
 };
 
 export const obsessed = (t: number): State => {

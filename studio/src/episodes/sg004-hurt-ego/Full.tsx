@@ -36,7 +36,7 @@ const OPEN: C = {viewH: 6.6, cx: -0.5, cy: 0.4, cz: -2.6, pitch: 62, yaw: -42, f
 const WIDE: C = {viewH: 7.3, cx: -0.4, cy: 0.35, cz: -2.45, pitch: 47, yaw: -30, fov: 24, roll: -7};
 const MID: C = {viewH: 5.6, cx: -0.5, cy: 0.4, cz: -1.7, pitch: 44, yaw: -38, fov: 24, roll: -4};
 const CLOSE: C = {viewH: 3.7, cx: -0.6, cy: 0.55, cz: -0.7, pitch: 38, yaw: -50, fov: 24, roll: 5};
-const ORBIT: C = {viewH: 4.1, cx: -0.55, cy: 0.62, cz: -0.6, pitch: 24, yaw: -70, fov: 24, roll: -3};
+const ORBIT: C = {viewH: 4.2, cx: -0.45, cy: 0.5, cz: -0.75, pitch: 34, yaw: -56, fov: 24, roll: -3};
 const END: C = {viewH: 6.4, cx: -0.4, cy: 0.4, cz: -1.95, pitch: 56, yaw: -34, fov: 24, roll: -8};
 
 export const cam = (t: number): Cam => {
