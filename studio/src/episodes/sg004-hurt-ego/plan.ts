@@ -218,10 +218,8 @@ export const ego = (t: number): State => {
   const high = t < UP ? 0 : 1 - Math.pow(1 - x, 3) + 0.06 * Math.sin(x * Math.PI);
   const plant: [number, number] = [ss(k, 0, 0.3), ss(k, 0.1, 0.4)];
   const strain = lerp(strainPre, 0.18 * hurt, u);
-  // after the drop: a small push on every beat, rock-solid in between
-  const beatPush = t > UP + 0.3 ? 0.012 * Math.exp(-(((t - UP) / BEAT) % 1) * 6) : 0;
   const jitA = lerp(0.025 * strainPre, 0.004, u);
-  const rig = plank({high: Math.min(1.05, high), plant, sag: 0.35 * hurt * (1 - u), dy: jit(t, 5) * jitA - sinkPre * (1 - u) + beatPush + 0.02 * show, nod: lerp(0.7 * hurt, -0.4, u), look: -0.25 * show});
+  const rig = plank({high: Math.min(1.05, high), plant, sag: 0.35 * hurt * (1 - u), dy: jit(t, 5) * jitA - sinkPre * (1 - u) + 0.02 * show, nod: lerp(0.7 * hurt, -0.4, u), look: -0.25 * show});
   const pulse = t > UP ? 0.15 * Math.exp(-(((t - UP) / BEAT) % 1) * 4) : 0;
   return base(3, rig, {energy: t < HURT ? 0.95 : t < UP ? 0.7 + 0.3 * (1 - gapS(t)) : 1 + pulse, tint: mixHex(TINT.ego, TINT.hurt, hurt), strain});
 };
