@@ -29,7 +29,7 @@ font('Nunito', 'nunito-latin-900-normal', '900');
 
 /** aspect: frame width / height (default the 1080×1920 Short) */
 /** cz: depth of the point the camera looks at; yaw: orbit around that point, degrees (+ = camera moves to +x) */
-export type Cam = {viewH: number; cy: number; cx?: number; cz?: number; pitch?: number; yaw?: number; fov?: number; aspect?: number};
+export type Cam = {viewH: number; cy: number; cx?: number; cz?: number; pitch?: number; yaw?: number; fov?: number; aspect?: number; /** dutch tilt, degrees (SG004) */ roll?: number};
 
 export const makeCamera = (c: Cam) => {
   const fov = c.fov ?? 16;
@@ -40,6 +40,7 @@ export const makeCamera = (c: Cam) => {
   const cz = c.cz ?? 0;
   cam.position.set((c.cx ?? 0) + d * Math.cos(p) * Math.sin(y), c.cy + d * Math.sin(p), cz + d * Math.cos(p) * Math.cos(y));
   cam.lookAt(c.cx ?? 0, c.cy, cz);
+  if (c.roll) cam.rotateZ((c.roll * Math.PI) / 180);
   cam.updateMatrixWorld();
   cam.updateProjectionMatrix();
   return cam;

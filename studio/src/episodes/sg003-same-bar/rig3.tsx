@@ -130,6 +130,8 @@ export type Look3 = {
   noArm?: [boolean, boolean];
   /** material of one arm instead of the body (red-hot before it breaks) */
   armMat?: [Mat | null, Mat | null];
+  /** material of a forearm only (SG004: the red-hot forearms of the hurt Ego) */
+  foreMat?: [Mat | null, Mat | null];
   cracks?: number;
   crackMat?: Mat;
   stumpMat?: Mat;
@@ -138,8 +140,9 @@ export type Look3 = {
 const torsoProf = (u: number) => HB.tr[0] + (HB.tr[1] - HB.tr[0]) * (u * u * (3 - 2 * u));
 
 /** the stickman, from a solved rig. root: world point of the figure origin, k: scale */
-export const Man: React.FC<{j: J3; root: V3; k: number; l: Look3; children?: React.ReactNode}> = ({j, root, k, l, children}) => {
-  const b = HB;
+export const Man: React.FC<{j: J3; root: V3; k: number; l: Look3; body?: Body; children?: React.ReactNode}> = ({j, root, k, l, body = HB, children}) => {
+  const b = body;
+  const torso = useMemo(() => (body === HB ? TORSO : torsoGeo(body.tr[0], body.tr[1], body.torso - 0.06)), [body]);
   // body gradient over the figure's actual extent (hanging, standing or lying)
   const ys = [j.head[1] + b.headR, j.ft[0][1], j.ft[1][1], j.hd[0][1], j.hd[1][1], j.chest[1], j.shc[1] + 0.1];
   const lo = Math.min(...ys.slice(1)) - 0.05;
@@ -147,8 +150,9 @@ export const Man: React.FC<{j: J3; root: V3; k: number; l: Look3; children?: Rea
   const y0 = root[1] + lo * k;
   const y1 = root[1] + hi * k;
   const B = {m: l.body, y0, y1};
-  const q = useMemo(() => new THREE.Quaternion(), []);
-  q.setFromRotationMatrix(new THREE.Matrix4().makeBasis(new THREE.Vector3(...j.side), new THREE.Vector3(...j.up), new THREE.Vector3(...j.fwd)));
+  // a NEW quaternion every frame: react-three-fiber compares props by reference, so a reused (mutated) object is never
+  // re-applied and the torso keeps the orientation of whatever frame that render tab drew before (SG004: backs jumping)
+  const q = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(new THREE.Vector3(...j.side), new THREE.Vector3(...j.up), new THREE.Vector3(...j.fwd)));
   const tPos = add(j.shc, mul(j.up, -b.torso * 0.92 + 0.02));
   const coreL = {color: l.core, y: b.torso * 0.52, r: 0.115, amt: 0.25 + 0.85 * l.energy};
   const chestP = add(add(tPos, mul(j.up, b.torso * 0.52)), mul(j.fwd, 0.1));
@@ -164,12 +168,12 @@ export const Man: React.FC<{j: J3; root: V3; k: number; l: Look3; children?: Rea
           ) : (
             <>
               <Limb a={j.sh[i]} b={j.el[i]} r0={b.ar[0]} r1={b.ar[1]} m={l.armMat?.[i] ?? l.body} y0={y0} y1={y1} />
-              <Limb a={j.el[i]} b={j.hd[i]} r0={b.ar[1]} r1={b.ar[2]} m={l.armMat?.[i] ?? l.body} y0={y0} y1={y1} />
+              <Limb a={j.el[i]} b={j.hd[i]} r0={b.ar[1]} r1={b.ar[2]} m={l.foreMat?.[i] ?? l.armMat?.[i] ?? l.body} y0={y0} y1={y1} />
             </>
           )}
         </React.Fragment>
       ))}
-      <Part geo={TORSO} {...B} core={coreL} position={tPos} quaternion={q} scale={[b.tr[2], 1, 1]} />
+      <Part geo={torso} {...B} core={coreL} position={tPos} quaternion={q} scale={[b.tr[2], 1, 1]} />
       {l.cracks && l.cracks > 0 && l.crackMat ? (
         <group position={tPos} quaternion={q}>
           {CRACKS.flatMap((line, li) => {
