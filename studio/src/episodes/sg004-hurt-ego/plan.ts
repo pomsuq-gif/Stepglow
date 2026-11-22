@@ -1,7 +1,8 @@
 import {clamp, easeInOut, lerp, ss} from '../nc001-work-smart/anim';
 import type {V3} from '../nc001-work-smart/kit3d';
 import {mixHex} from '../nc001-work-smart/world';
-import {ANK, HB, LEG, norm, type Rig} from '../sg003-same-bar/rig3';
+import {HB, norm, solve3, type Rig} from '../sg003-same-bar/rig3';
+import type {Body} from '../nc001-work-smart/kit3d';
 import {BEAT, beat, gap} from './grid';
 
 /**
@@ -10,7 +11,7 @@ import {BEAT, beat, gap} from './grid';
  * Figure-local: feet at +x, head toward −x, the lane's depth is z.
  */
 export const NAMES = ['Motivated', 'Talented', 'Disciplined', 'Ego', 'Obsessed'] as const;
-export const LANE = 0.95;
+export const LANE = 0.88;
 export const ZS = [-4, -3, -2, -1, 0].map((i) => i * LANE);
 export const TINT = {mot: '#ffc94a', tal: '#a98bff', dis: '#38e8ff', ego: '#ff4fd8', hurt: '#ff2a1a', obs: '#ff8a2e', dead: '#56607a'};
 
@@ -22,17 +23,25 @@ export const UP = B(0);
 export const OBS_UP = B(0.5);
 export const END_TXT = B(11);
 
+/* ───────────── the body: our porcelain stickman, built like an athlete for this one ───────────── */
+
+/** smaller head, longer and leaner limbs than the SG003 rig (the reference's planks read as athletes) */
+export const PB: Body = {...HB, headR: 0.155, gap: 0.04, torso: 0.5, arm: 0.33, fore: 0.32, thigh: 0.43, shin: 0.42, shZ: 0.15, hipZ: 0.068, ankle: 0.046, tr: [0.1, 0.118, 0.85], ar: [0.043, 0.039, 0.035], lr: [0.056, 0.049, 0.043]};
+export const solveP = (r: Rig) => solve3(r, PB);
+const LEG = PB.thigh + PB.shin;
+const ANK = PB.ankle;
+
 /* ───────────── the plank as a rig ───────────── */
 
-const SHC = HB.torso * 0.92;
+const SHC = PB.torso * 0.92;
 const L = LEG * 0.985 + SHC;
 export const FX = 0.55;
-const R_EL = HB.ar[1];
-const R_HD = HB.ar[2];
+const R_EL = PB.ar[1];
+const R_HD = PB.ar[2];
 /** shoulder heights: on the forearms, on straight arms, lying flat */
-const SH_LOW = HB.arm + R_EL;
-const SH_HIGH = Math.sqrt((HB.arm + HB.fore) ** 2 * 0.993 ** 2 - 0.0004) + R_HD - 0.01;
-const SH_LIE = HB.headR + 0.005;
+const SH_LOW = PB.arm + R_EL;
+const SH_HIGH = Math.sqrt((PB.arm + PB.fore) ** 2 * 0.993 ** 2 - 0.0004) + R_HD - 0.01;
+const SH_LIE = PB.headR + 0.01;
 
 export type PlankOpts = {
   /** 0 = on the forearms, 1 = on straight arms */
@@ -58,7 +67,7 @@ export const plank = (o: PlankOpts = {}): Rig => {
   const ank: V3 = [FX, ANK, 0];
   const shc: V3 = [ank[0] + dir[0] * L, ank[1] + dir[1] * L, 0];
   const sag = clamp(o.sag ?? 0) * (1 - lie);
-  const pel: V3 = [shc[0] - dir[0] * SHC, Math.max(HB.tr[0] + 0.005, shc[1] - dir[1] * SHC - 0.13 * sag), 0];
+  const pel: V3 = [shc[0] - dir[0] * SHC, Math.max(PB.tr[0] + 0.005, shc[1] - dir[1] * SHC - 0.13 * sag), 0];
   const up = norm([shc[0] - pel[0], shc[1] - pel[1], 0]);
   const x = shc[0];
   const hand = (sd: number): V3 => {

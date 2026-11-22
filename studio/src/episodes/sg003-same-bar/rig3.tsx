@@ -140,8 +140,9 @@ export type Look3 = {
 const torsoProf = (u: number) => HB.tr[0] + (HB.tr[1] - HB.tr[0]) * (u * u * (3 - 2 * u));
 
 /** the stickman, from a solved rig. root: world point of the figure origin, k: scale */
-export const Man: React.FC<{j: J3; root: V3; k: number; l: Look3; children?: React.ReactNode}> = ({j, root, k, l, children}) => {
-  const b = HB;
+export const Man: React.FC<{j: J3; root: V3; k: number; l: Look3; body?: Body; children?: React.ReactNode}> = ({j, root, k, l, body = HB, children}) => {
+  const b = body;
+  const torso = useMemo(() => (body === HB ? TORSO : torsoGeo(body.tr[0], body.tr[1], body.torso - 0.06)), [body]);
   // body gradient over the figure's actual extent (hanging, standing or lying)
   const ys = [j.head[1] + b.headR, j.ft[0][1], j.ft[1][1], j.hd[0][1], j.hd[1][1], j.chest[1], j.shc[1] + 0.1];
   const lo = Math.min(...ys.slice(1)) - 0.05;
@@ -171,7 +172,7 @@ export const Man: React.FC<{j: J3; root: V3; k: number; l: Look3; children?: Rea
           )}
         </React.Fragment>
       ))}
-      <Part geo={TORSO} {...B} core={coreL} position={tPos} quaternion={q} scale={[b.tr[2], 1, 1]} />
+      <Part geo={torso} {...B} core={coreL} position={tPos} quaternion={q} scale={[b.tr[2], 1, 1]} />
       {l.cracks && l.cracks > 0 && l.crackMat ? (
         <group position={tPos} quaternion={q}>
           {CRACKS.flatMap((line, li) => {

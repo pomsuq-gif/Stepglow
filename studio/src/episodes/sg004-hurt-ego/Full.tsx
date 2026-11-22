@@ -6,8 +6,8 @@ import {mixHex} from '../nc001-work-smart/world';
 import {Watermark} from '../../channels/stepglow/Brand';
 import {SG} from '../sg002-start-small/look';
 import {beat, gap, hit, shake} from './grid';
-import {CAST, END_TXT, HURT, NAMES, OUT, TINT, UP} from './plan';
-import {K3, solve3, W3} from '../sg003-same-bar/rig3';
+import {CAST, END_TXT, HURT, NAMES, OUT, TINT, UP, solveP} from './plan';
+import {K3, W3} from '../sg003-same-bar/rig3';
 import {World} from './World';
 
 export const SG004_FPS = 60;
@@ -15,7 +15,7 @@ export const SG004_SECONDS = 20.06;
 export const SG004_FRAMES = Math.round(SG004_SECONDS * SG004_FPS);
 
 const B = beat;
-type C = {viewH: number; cx: number; cy: number; cz: number; pitch: number; yaw: number; fov: number};
+type C = {viewH: number; cx: number; cy: number; cz: number; pitch: number; yaw: number; fov: number; roll: number};
 const mixC = (a: C, b: C, k: number): C => ({
   viewH: lerp(a.viewH, b.viewH, k),
   cx: lerp(a.cx, b.cx, k),
@@ -24,27 +24,35 @@ const mixC = (a: C, b: C, k: number): C => ({
   pitch: lerp(a.pitch, b.pitch, k),
   yaw: lerp(a.yaw, b.yaw, k),
   fov: lerp(a.fov, b.fov, k),
+  roll: lerp(a.roll, b.roll, k),
 });
 
-/** one continuous take as in the reference: high over the five lanes, creeping in toward the near ones, a punch on the drop, then up and out */
-const WIDE: C = {viewH: 7.0, cx: -0.4, cy: 0.1, cz: -1.95, pitch: 48, yaw: -32, fov: 24};
-const MID: C = {viewH: 5.4, cx: -0.5, cy: 0.35, cz: -1.4, pitch: 45, yaw: -36, fov: 24};
-const CLOSE: C = {viewH: 4.2, cx: -0.6, cy: 0.62, cz: -0.7, pitch: 38, yaw: -50, fov: 24};
-const ORBIT: C = {viewH: 4.4, cx: -0.55, cy: 0.66, cz: -0.6, pitch: 28, yaw: -64, fov: 24};
-const END: C = {viewH: 6.8, cx: -0.4, cy: 0.2, cz: -1.9, pitch: 54, yaw: -34, fov: 24};
+/**
+ * One continuous take as in the reference, but never still: a dutch tilt that leans and swings,
+ * a slow dolly toward the near lanes, a jolt on every fall, a whip-in on the hurt, a heartbeat on the stutter,
+ * a hard punch and a swing to the heroic side on the drop, then a crane up and out.
+ */
+const OPEN: C = {viewH: 6.6, cx: -0.5, cy: 0.4, cz: -2.6, pitch: 62, yaw: -42, fov: 24, roll: -10};
+const WIDE: C = {viewH: 7.3, cx: -0.4, cy: 0.35, cz: -2.45, pitch: 47, yaw: -30, fov: 24, roll: -7};
+const MID: C = {viewH: 5.6, cx: -0.5, cy: 0.4, cz: -1.7, pitch: 44, yaw: -38, fov: 24, roll: -4};
+const CLOSE: C = {viewH: 3.7, cx: -0.6, cy: 0.55, cz: -0.7, pitch: 38, yaw: -50, fov: 24, roll: 5};
+const ORBIT: C = {viewH: 4.1, cx: -0.55, cy: 0.62, cz: -0.6, pitch: 24, yaw: -70, fov: 24, roll: -3};
+const END: C = {viewH: 6.4, cx: -0.4, cy: 0.4, cz: -1.95, pitch: 56, yaw: -34, fov: 24, roll: -8};
 
 export const cam = (t: number): Cam => {
   let c: C;
-  if (t < B(-4)) c = mixC(WIDE, MID, easeInOut(seg(t, 1.6, B(-4))));
-  else if (t < UP) c = mixC(MID, CLOSE, easeInOut(seg(t, B(-4), B(-2.6))));
+  if (t < 2.3) c = mixC(OPEN, WIDE, easeInOut(seg(t, 0.2, 2.3)));
+  else if (t < B(-4)) c = mixC(WIDE, MID, easeInOut(seg(t, 2.3, B(-4))));
+  else if (t < UP) c = mixC(MID, CLOSE, easeInOut(seg(t, B(-4), HURT + 0.15)));
   else if (t < B(8)) c = mixC(CLOSE, ORBIT, easeInOut(seg(t, UP, B(8))));
   else c = mixC(ORBIT, END, easeInOut(seg(t, B(8), B(11.3))));
-  // opening: from a touch higher as the lights come on
-  c = {...c, viewH: c.viewH * (1 + 0.08 * (1 - ss(t, 0.3, 2.2))), yaw: c.yaw - 3 * (1 - ss(t, 0, 3))};
-  // punches: every fall a little, the drop a lot
-  const punch = OUT.reduce((m, o) => m + 0.035 * hit(t, o + 0.1, 6), 0) + 0.12 * hit(t, UP, 3.5) + 0.04 * hit(t, HURT, 6);
+  // a slow breathing sway of the tilt, always
+  c = {...c, roll: c.roll + 1.2 * Math.sin(t * 0.9)};
+  // punches: every fall, the hurt (a whip in), each gap of the stutter (a heartbeat), the drop (hard)
+  const punch = OUT.reduce((m, o) => m + 0.07 * hit(t, o + 0.08, 6), 0) + 0.1 * hit(t, HURT, 5) + 0.05 * gap(t) + 0.16 * hit(t, UP, 3.2);
   c.viewH *= 1 - punch;
-  const [sx, sy] = shake(t, 0.02 * hit(t, HURT, 4) + 0.012 * gap(t) + 0.035 * hit(t, UP, 4.5) + OUT.reduce((m, o) => m + 0.012 * hit(t, o + 0.15, 7), 0));
+  c.roll += OUT.reduce((m, o, i) => m + (i % 2 ? 2.2 : -2.2) * hit(t, o + 0.08, 5), 0) + 4 * hit(t, HURT, 4) - 6 * hit(t, UP, 3);
+  const [sx, sy] = shake(t, 0.025 * hit(t, HURT, 4) + 0.015 * gap(t) + 0.05 * hit(t, UP, 4) + OUT.reduce((m, o) => m + 0.018 * hit(t, o + 0.15, 7), 0));
   return {...c, cx: c.cx + sx, cy: c.cy + sy};
 };
 
@@ -53,7 +61,7 @@ export const cam = (t: number): Cam => {
 const shadow = '0 3px 2px rgba(0,0,0,0.55), 0 6px 26px rgba(0,0,0,0.85)';
 
 /** two lines, the second in an accent; each line pops in on its own beat */
-const Cap: React.FC<{t: number; y: number; at: [number, number]; out?: number; lines: [string, string]; accent: string; size?: number}> = ({t, y, at, out = 1e9, lines, accent, size = 70}) => {
+const Cap: React.FC<{t: number; y: number; at: [number, number]; out?: number; lines: [string, string]; accent: string; size?: number}> = ({t, y, at, out = 1e9, lines, accent, size = 88}) => {
   const fadeOut = 1 - clamp((t - out) / 0.3);
   return (
     <>
@@ -111,9 +119,9 @@ const Over: React.FC<{t: number}> = ({t}) => {
   return (
     <AbsoluteFill>
       {st.map((s, i) => {
-        const hd = W3(solve3(s.rig).head, s.root, K3);
-        const [x, y] = project(c, hd[0] - 0.05, hd[1] + 0.36, hd[2]);
-        const size = clamp(0.08 * ppu, 24, 44);
+        const hd = W3(solveP(s.rig).head, s.root, K3);
+        const [x, y] = project(c, hd[0] - 0.05, hd[1] + 0.3, hd[2]);
+        const size = clamp(0.1 * ppu, 30, 54);
         const outAt = i < 3 ? OUT[i] : 1e9;
         const outK = clamp((t - outAt - 0.08) / 0.22);
         const pop = outK > 0 ? Math.exp(-(t - outAt - 0.08) * 7) : 0;
@@ -142,8 +150,8 @@ export const SG004Full: React.FC<{withAudio?: boolean}> = ({withAudio = true}) =
   const frame = useCurrentFrame();
   const {fps} = useVideoConfig();
   const t = frame / fps;
-  const flash = 0.75 * hit(t, UP - 0.02, 6);
-  const red = 0.12 * hit(t, HURT, 3) + 0.05 * ss(t, HURT, HURT + 0.4) * (t < UP ? 1 : Math.exp(-(t - UP) * 0.6)) + 0.06 * gap(t) + 0.12 * hit(t, UP, 2.5);
+  const flash = 0.45 * hit(t, UP - 0.02, 7);
+  const red = 0.14 * hit(t, HURT, 3) + 0.06 * gap(t) + 0.1 * hit(t, UP, 2.5);
   return (
     <AbsoluteFill style={{background: SG.bg.edge}}>
       <Stage look={SG} cam={cam(t)}>

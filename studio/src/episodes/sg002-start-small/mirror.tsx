@@ -16,12 +16,13 @@ const MirrorShader = {
     uAmt: {value: 0.5},
     uBlur: {value: new THREE.Vector2(0.0015, 0.0015)},
     uFar: {value: 40},
+    uEdge: {value: 0},
   },
   vertexShader: /* glsl */ `
     uniform mat4 textureMatrix; varying vec4 vUv; varying vec3 vW;
     void main(){ vUv = textureMatrix * vec4(position, 1.0); vW = (modelMatrix * vec4(position, 1.0)).xyz; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
   fragmentShader: /* glsl */ `
-    uniform sampler2D tDiffuse; uniform vec3 uBase, uPool; uniform vec2 uCenter, uBlur; uniform float uPoolR, uAmt, uFar;
+    uniform sampler2D tDiffuse; uniform vec3 uBase, uPool; uniform vec2 uCenter, uBlur; uniform float uPoolR, uAmt, uFar, uEdge;
     varying vec4 vUv; varying vec3 vW;
     void main(){
       vec2 uv = vUv.xy / vUv.w;
@@ -32,13 +33,13 @@ const MirrorShader = {
       }
       r /= wsum;
       float d = length(vW.xz - uCenter);
-      vec3 base = mix(uPool, uBase, smoothstep(0.0, uPoolR, d));
+      vec3 base = mix(uPool, uBase, smoothstep(uPoolR * uEdge, uPoolR, d));
       float fade = 1.0 - smoothstep(uFar * 0.4, uFar, d);
       gl_FragColor = vec4(base + r * uAmt * fade, 1.0);
     }`,
 };
 
-export const Mirror: React.FC<{size?: number; y?: number; amt?: number; center?: [number, number]; poolR?: number; pool?: string; base?: string; res?: [number, number]; far?: number}> = ({size = 200, y = 0, amt = 0.5, center = [0, 0], poolR = 6, pool = '#1c2c50', base = '#0a1122', res = [720, 1280], far = 40}) => {
+export const Mirror: React.FC<{size?: number; y?: number; amt?: number; center?: [number, number]; poolR?: number; pool?: string; base?: string; res?: [number, number]; far?: number; edge?: number}> = ({size = 200, y = 0, amt = 0.5, center = [0, 0], poolR = 6, pool = '#1c2c50', base = '#0a1122', res = [720, 1280], far = 40, edge = 0}) => {
   const refl = useMemo(() => {
     const r = new Reflector(new THREE.PlaneGeometry(size, size), {textureWidth: res[0], textureHeight: res[1], clipBias: 0.002, shader: MirrorShader, multisample: 4});
     r.rotateX(-Math.PI / 2);
@@ -56,6 +57,7 @@ export const Mirror: React.FC<{size?: number; y?: number; amt?: number; center?:
   u.uPool.value.set(pool);
   u.uBase.value.set(base);
   u.uFar.value = far;
+  u.uEdge.value = edge;
   u.uBlur.value.set(1.4 / res[0], 1.4 / res[1]);
   refl.position.y = y;
   return <primitive object={refl} />;
