@@ -5,8 +5,8 @@ import {type Cam, project, Stage} from '../nc001-work-smart/kit3d';
 import {Watermark} from '../../channels/stepglow/Brand';
 import {SG} from '../sg002-start-small/look';
 import {K3, W3} from '../sg003-same-bar/rig3';
-import {DROP, hit, shake} from './grid';
-import {CAST, HD, NAMES, solveC, T, TINTS, TOPY, WALL_Z, XS} from './plan';
+import {beat, DROP, hit, shake} from './grid';
+import {CAST, DAY_SLIP, HD, NAMES, solveC, T, TINTS, TOPY, WALL_Z, XS} from './plan';
 import {World} from './World';
 
 export const SG005_FPS = 60;
@@ -24,28 +24,61 @@ const mixC = (a: C, b: C, k: number): C => ({
 });
 
 /**
- * One continuous take up the wall, as in the reference: it opens on the ground, follows the climb
- * (Discipline's pace is the camera's pace), leans in on the three in the middle, lets Ego fall out of frame,
- * stops under the summit so the edge comes down into frame, closes in on the rescue, then opens on the top.
+ * The reference is one take; ours cuts on the strong beats between shots that each sit on one event:
+ * low angle on the ground → crane up → Motivation's fist / Ego's pose → the upside-down → the quit →
+ * Obsession's burning hands → orbit → "I can fly" and the fall → the race → Day 1 slips → the three →
+ * Ego's fall (the camera looks down after him) → he hits the ground → up at the summit → torn → the top → the rescue → the end.
  */
-const OPEN: C = {viewH: 8.4, cx: 0, cy: 2.2, pitch: 6, yaw: 0, roll: 0};
-const follow = (t: number): C => ({viewH: 9.2, cx: 0.05, cy: Math.min(TOPY - 1.6, HD(t) + 0.9), pitch: 3, yaw: 7 * Math.sin(t * 0.15), roll: 1.6 * Math.sin(t * 0.23)});
-const trio = (t: number): C => ({viewH: 5.4, cx: -0.85, cy: HD(t) + 0.55, pitch: 4, yaw: -14, roll: -3});
-const TOPC: C = {viewH: 7.4, cx: 0.55, cy: TOPY - 0.6, pitch: 5, yaw: 6, roll: 1.5};
-const RESCUE: C = {viewH: 5.2, cx: 1.0, cy: TOPY - 0.35, pitch: 12, yaw: 38, roll: 2};
-const FIN: C = {viewH: 6.0, cx: 0.95, cy: TOPY + 0.95, pitch: 9, yaw: -5, roll: 0};
-const FIN2: C = {...FIN, viewH: 5.3, cy: TOPY + 0.9, yaw: -9};
+const B = beat;
+const hOf = (i: number, t: number) => CAST[i](t).h;
+const E = easeInOut;
+type Shot = [number, (t: number) => C];
+const SHOTS: Shot[] = [
+  // the ground, a little from below; then the camera rises with them
+  [0, (t) => ({viewH: lerp(8.4, 8.0, seg(t, 0, T.jump)), cx: 0, cy: 2.0, pitch: -4, yaw: -3, roll: 0})],
+  [T.jump, (t) => {
+    const k = E(seg(t, T.jump, DROP));
+    return {viewH: 8.8, cx: 0.05, cy: lerp(2.0, HD(t) + 1.0, k), pitch: lerp(-3, 3, k), yaw: lerp(-10, 6, k), roll: 0};
+  }],
+  // the drop: everyone, a slow drift across
+  [DROP, (t) => ({viewH: lerp(8.8, 8.0, seg(t, DROP, B(13))), cx: 0.1, cy: HD(t) + 1.2, pitch: 3, yaw: lerp(8, -8, E(seg(t, DROP, B(13)))), roll: 1})],
+  // Motivation quits
+  [B(13), (t) => ({viewH: 5.6, cx: XS[0] + 0.9, cy: lerp(hOf(0, B(15)), hOf(0, t), 0.3) + 0.2, pitch: 3, yaw: -12, roll: -1})],
+  // in toward Obsession's burning hands and out again
+  [B(17), (t) => {
+    const k = Math.sin(Math.PI * seg(t, B(17), B(27)));
+    return {viewH: lerp(8.2, 5.4, k), cx: lerp(0.1, XS[2], k), cy: lerp(HD(t) + 1.0, hOf(2, t) + 0.3, k), pitch: 3, yaw: lerp(-6, 10, seg(t, B(17), B(27))), roll: 0};
+  }],
+  // "I can fly", and the camera drops a little with his fall
+  [B(27), (t) => {
+    const h = hOf(5, t);
+    const follow = t < T.fall ? h - 0.3 : Math.max(hOf(4, t) + 1.0, lerp(hOf(5, T.fall) - 0.3, h, 0.5));
+    return {viewH: 6.4, cx: XS[5] - 0.9, cy: follow, pitch: 3, yaw: 12, roll: 1};
+  }],
+  // the race, a little from the side
+  [B(36), (t) => ({viewH: lerp(8.0, 7.2, seg(t, B(36), B(46))), cx: -0.1, cy: HD(t) + 0.5, pitch: 3, yaw: lerp(-16, -8, seg(t, B(36), B(46))), roll: -1})],
+  // the three; Ego falls and the camera tips down after him
+  [B(46), (t) => {
+    const k = E(seg(t, T.slip + 0.2, T.slip + 1.4));
+    return {viewH: lerp(5.6, 7.6, k), cx: lerp(-0.85, -0.6, k), cy: HD(t) + 0.55 - 1.2 * k, pitch: lerp(4, 26, k), yaw: -12, roll: -2};
+  }],
+  // he hits the ground
+  [B(54), (t) => ({viewH: 5.2, cx: XS[1] - 0.3, cy: 1.0, pitch: 3, yaw: -10, roll: 0})],
+  // the summit comes into view; Obsession burns out
+  [B(56), (t) => ({viewH: 7.4, cx: 0.0, cy: HD(t) + 1.3, pitch: -6, yaw: lerp(-12, -4, seg(t, B(56), B(64))), roll: -1})],
+  // Discipline climbs out
+  [B(64), (t) => ({viewH: lerp(6.2, 5.6, seg(t, B(64), B(70))), cx: XS[3] + 0.3, cy: TOPY - 0.3, pitch: 8, yaw: -18, roll: -1})],
+  [B(70), (t) => mixC(RESCUE, {...RESCUE, viewH: 4.9}, seg(t, B(70), T.flash))],
+  [T.flash, (t) => mixC(FIN, FIN2, E(seg(t, T.flash, SG005_SECONDS)))],
+];
+const RESCUE: C = {viewH: 5.4, cx: 1.0, cy: TOPY - 0.35, pitch: 10, yaw: 30, roll: 1};
+const FIN: C = {viewH: 6.4, cx: 0.95, cy: TOPY + 0.95, pitch: 9, yaw: -5, roll: 0};
+const FIN2: C = {...FIN, viewH: 5.3, cy: TOPY + 0.9, yaw: -10};
 
 const camBase = (t: number): C => {
-  if (t < 1.0) return OPEN;
-  if (t < 3.2) return mixC(OPEN, follow(t), easeInOut(seg(t, 1.0, 3.2)));
-  if (t < T.zoom) return follow(t);
-  if (t < T.slip + 0.35) return mixC(follow(t), trio(t), easeInOut(seg(t, T.zoom, T.zoom + 1.0)));
-  if (t < 34.6) return mixC(trio(t), follow(t), easeInOut(seg(t, T.slip + 0.35, T.slip + 1.6)));
-  if (t < 36.5) return mixC(follow(t), TOPC, easeInOut(seg(t, 34.6, 36.3)));
-  if (t < T.flash) return mixC(TOPC, RESCUE, easeInOut(seg(t, 36.5, T.reach + 0.3)));
-  if (t < T.day1) return mixC(RESCUE, FIN, easeInOut(seg(t, T.flash, T.flash + 1.3)));
-  return mixC(FIN, FIN2, easeInOut(seg(t, T.day1, SG005_SECONDS)));
+  let f = SHOTS[0][1];
+  for (const [at, fn] of SHOTS) if (t >= at) f = fn;
+  return f(t);
 };
 
 const PUNCH: [number, number][] = [
@@ -56,6 +89,7 @@ const PUNCH: [number, number][] = [
   [T.slip, 0.07],
   [T.fell, 0.05],
   [T.torn, 0.04],
+  [DAY_SLIP, 0.03],
   [T.top, 0.03],
   [T.flash, 0.1],
   [T.day1, 0.04],
@@ -64,7 +98,7 @@ const PUNCH: [number, number][] = [
 export const cam = (t: number): Cam => {
   const c = camBase(t);
   const p = PUNCH.reduce((m, [at, a]) => m + a * hit(t, at, 5), 0);
-  const [sx, sy] = shake(t, 0.03 * hit(t, T.slip, 4) + 0.06 * hit(t, T.fell, 3.5) + 0.02 * hit(t, DROP, 4) + 0.025 * hit(t, T.flash, 4));
+  const [sx, sy] = shake(t, 0.03 * hit(t, T.slip, 4) + 0.04 * hit(t, DAY_SLIP, 5) + 0.06 * hit(t, T.fell, 3.5) + 0.02 * hit(t, DROP, 4) + 0.025 * hit(t, T.flash, 4));
   return {viewH: c.viewH * (1 - p), cx: c.cx + sx, cy: c.cy + sy, cz: 0, pitch: c.pitch, yaw: c.yaw, roll: c.roll + 3 * hit(t, T.slip, 3) - 2 * hit(t, T.torn, 3), fov: 24};
 };
 
@@ -136,13 +170,6 @@ const Over: React.FC<{t: number}> = ({t}) => {
           </div>
         );
       })}
-      {/* Ego landed far below: the label rises with the dust at the bottom of the frame */}
-      {t > T.fell ? (
-        <div style={{position: 'absolute', left: project(c, XS[1], c.cy - c.viewH / 2, 0.6)[0], top: 1560 - 90 * (1 - Math.exp(-(t - T.fell) * 3)), transform: 'translate(-50%, -100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', fontFamily: 'Sora', fontWeight: 600, lineHeight: 1.05, whiteSpace: 'nowrap', opacity: clamp((t - T.fell) / 0.2) * (1 - ss(t, T.fell + 3.2, T.fell + 3.6))}}>
-          <span style={{fontSize: 50, color: '#ff5a5a', transform: `scale(${1 + 0.6 * Math.exp(-(t - T.fell) * 6)})`, textShadow: '0 2px 8px rgba(0,0,0,0.9), 0 0 18px #ff5a5a'}}>fell</span>
-          <span style={{fontSize: 40, color: '#9aa4bc', letterSpacing: '0.04em', textShadow: '0 2px 8px rgba(0,0,0,0.9)'}}>Ego</span>
-        </div>
-      ) : null}
       {/* height marks on the wall, right side */}
       {[0.25, 0.5, 0.75].map((m) => {
         const [x, y] = project(c, 3.15, TOPY * m, WALL_Z + 0.02);

@@ -7,7 +7,8 @@ import {mixHex} from '../nc001-work-smart/world';
 import {add, HB, K3, Man, mul, W3, type J3, type Look3} from '../sg003-same-bar/rig3';
 import {PoolFloor} from '../sg004-hurt-ego/fx';
 import {hit} from './grid';
-import {CAST, HO, ROPE_BOT, RZ, solveC, T, TINT, TOPY, WALL_Z, XS, MEET_W, type State} from './plan';
+import {BEAM_Y, CAST, DAY_SLIP, HO, ROPE_BOT, RZ, solveC, T, TINT, TOPY, WALL_Z, XS, MEET_W, type State} from './plan';
+import {Gantry} from './env';
 
 const G = 9.8;
 const ROPE = mat('#b9b2a4', '#6a665e', {shade: '#2a2a38', rim: '#fff4dc', rimAmt: 0.3, rimPow: 2.4, wrap: 0.6, emit: 0.7});
@@ -19,7 +20,7 @@ const FLAG = mat('#ffd27a', '#d0701a', {shade: '#4a1a06', rim: '#fff0c0', rimAmt
 
 const q = (x: number, n = 16) => Math.round(clamp(x) * n) / n;
 /** porcelain going red-hot (burnt hands) */
-const redHot = (k: number): Mat => mat(mixHex('#ffffff', '#ff7a5a', k), mixHex('#a9b9d6', '#c8160e', k), {shade: mixHex('#56688f', '#6a0a08', k), rim: mixHex('#dcebff', '#ff9a7a', k), rimAmt: 0.5, rimPow: 2, wrap: 0.8, emit: 0.96 - 0.1 * k});
+const redHot = (k: number): Mat => mat(mixHex('#ffffff', '#d8402e', k), mixHex('#a9b9d6', '#8a0e0a', k), {shade: mixHex('#56688f', '#4a0606', k), rim: mixHex('#dcebff', '#ff6a50', k), rimAmt: 0.45, rimPow: 2.2, wrap: 0.7, emit: 0.96 - 0.16 * k});
 /** porcelain gone cold */
 const spentMat = (k: number): Mat => mat(mixHex('#ffffff', '#b4bccc', k), mixHex('#a9b9d6', '#4a5266', k), {shade: mixHex('#56688f', '#2a3040', k), rim: mixHex('#dcebff', '#8a96b4', k), rimAmt: 0.5 - 0.15 * k, rimPow: 2.4, wrap: 0.75, emit: 0.96 - 0.2 * k});
 
@@ -127,6 +128,7 @@ const Summit: React.FC<{t: number; show: number}> = ({t, show}) => {
     <>
       <Part geo={geo} m={topMat} y0={TOPY - 0.6} y1={TOPY} position={[0, TOPY - 0.3, WALL_Z - 7]} />
       <Limb a={[-15, TOPY - 0.04, WALL_Z - 0.02]} b={[15, TOPY - 0.04, WALL_Z - 0.02]} r0={0.06} r1={0.06} m={ROCK} y0={TOPY - 0.2} y1={TOPY + 0.1} />
+      <Gantry />
       {/* the horizon: a band of warm light far away, the sky above it */}
       <Glow p={[0, TOPY + 0.2, -26]} w={70} h={7} color="#ff8a3a" a={0.55} />
       <Glow p={[0, TOPY - 0.3, -26]} w={50} h={2.2} color="#ffc27a" a={0.4} />
@@ -168,15 +170,14 @@ const Flag: React.FC<{t: number; p: V3}> = ({t, p}) => {
   );
 };
 
-/** one rope per climber, hanging from a davit on the summit */
+/** one rope per climber, hanging from the gantry beam high over the summit */
 const Ropes: React.FC = () => (
   <>
     {XS.map((x, i) => (
       <React.Fragment key={i}>
-        <Limb a={[x, ROPE_BOT, RZ]} b={[x, TOPY + 0.6, RZ]} r0={0.015} r1={0.015} m={ROPE} y0={0} y1={TOPY} />
-        <Limb a={[x, TOPY - 0.05, WALL_Z - 0.32]} b={[x, TOPY + 0.7, WALL_Z - 0.32]} r0={0.026} r1={0.022} m={STEEL} y0={TOPY} y1={TOPY + 0.7} />
-        <Limb a={[x, TOPY + 0.68, WALL_Z - 0.32]} b={[x, TOPY + 0.62, RZ]} r0={0.022} r1={0.02} m={STEEL} y0={TOPY} y1={TOPY + 0.7} />
+        <Limb a={[x, ROPE_BOT, RZ]} b={[x, BEAM_Y, RZ]} r0={0.015} r1={0.015} m={ROPE} y0={0} y1={TOPY} />
         <Ball p={[x, ROPE_BOT, RZ]} r={0.03} m={ROPE} y0={0} y1={1} />
+        <Ball p={[x, BEAM_Y - 0.02, RZ]} r={0.05} m={STEEL} y0={BEAM_Y - 0.1} y1={BEAM_Y + 0.1} />
       </React.Fragment>
     ))}
   </>
@@ -227,17 +228,6 @@ const Crown: React.FC<{j: J3}> = ({j}) => {
           <Ball p={add(p, mul(j.up, 0.135))} r={0.018} m={GOLD} y0={c[1]} y1={c[1] + 0.2} />
         </React.Fragment>
       ))}
-    </>
-  );
-};
-
-const torus = new THREE.TorusGeometry(1, 0.17, 12, 40);
-const Band: React.FC<{j: J3}> = ({j}) => {
-  const c = add(j.head, mul(j.up, HB.headR * 0.18));
-  const qt = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(...j.up));
-  return (
-    <>
-      <Part geo={torus} m={BAND} y0={c[1] - 0.1} y1={c[1] + 0.1} position={c} quaternion={qt} scale={HB.headR * 1.0} />
     </>
   );
 };
@@ -348,7 +338,7 @@ const Plume: React.FC<{t: number; at: number; x: number; bottom: number}> = ({t,
         const w = (0.7 + 0.7 * rnd(i + 3)) * (0.5 + 0.9 * e);
         const px = x + (rnd(i + 4) - 0.5) * 1.1 * (0.4 + e);
         const py = bottom - 0.6 + e * (0.6 + 1.3 * rnd(i + 5));
-        return <Puff key={i} p={[px, py, 0.6 + 0.02 * i]} w={w} h={w * 0.85} color="#8e92a2" a={0.8 * fade} seed={i * 2.1} />;
+        return <Puff key={i} p={[px, py, 0.35 + 0.02 * i]} w={w} h={w * 0.85} color="#8e92a2" a={0.7 * fade} seed={i * 2.1} />;
       })}
     </>
   );
@@ -366,7 +356,6 @@ export const World: React.FC<{t: number; cam: Cam}> = ({t, cam}) => {
   const burnQ = q((st[2].burn ?? 0) * (1 - 0.55 * st[2].spent));
   const mats = useMemo(() => ({sp: spentQ.map((k) => spentMat(k)), burn: redHot(burnQ)}), [spentQ.join(','), burnQ]);
   const cy = cam.cy;
-  const bottom = cam.cy - cam.viewH / 2;
   const lights = st.map((s, i) => ({p: w(i, js[i].chest), c: s.tint, i: Math.min(1.3, s.energy) * (Math.abs(w(i, js[i].chest)[1] - cy) < 9 ? 1 : 0)}));
   const showTop = cy + cam.viewH > TOPY - 2 ? 1 : 0;
   const egoHand = w(1, js[1].hd[0]);
@@ -392,7 +381,7 @@ export const World: React.FC<{t: number; cam: Cam}> = ({t, cam}) => {
       <Summit t={t} show={showTop} />
       {showTop ? <Flag t={t} p={[XS[2] + 0.15, TOPY, WALL_Z - 1.25]} /> : null}
       {/* the ground under the ropes, only at the start */}
-      {cy < 9 ? (
+      {cy < 6 ? (
         <>
           <PoolFloor c={[0, 0.3]} r={4.5} edge={0.15} pool="#1a2236" base="#03050a" />
           {st.map((s, i) => (
@@ -412,26 +401,26 @@ export const World: React.FC<{t: number; cam: Cam}> = ({t, cam}) => {
           foreMat: i === 2 && burnQ > 0 ? [mats.burn, mats.burn] : undefined,
         };
         const c = w(i, j.chest);
-        if (Math.abs(c[1] - cy) > 8) return null;
+        if (Math.abs(c[1] - cy) > 13) return null;
         return (
           <React.Fragment key={i}>
             {/* the coloured aura behind every climber, as in the reference — softer and in depth */}
             <Glow p={add(c, [0, 0.05, -0.15])} w={1.9} h={2.2} color={s.tint} a={0.11 * Math.min(1.2, s.energy)} />
             <Man j={j} root={roots[i]} k={K3} l={l} body={HB}>
               {i === 1 ? <Crown j={j} /> : null}
-              {i === 3 ? <Band j={j} /> : null}
             </Man>
           </React.Fragment>
         );
       })}
       <BurnMarks t={t} cy={cy} s={st[2]} />
       {/* sliding hands: Motivation, Obsession, Ego's slip */}
+      <Friction t={t} p={w(4, js[4].hd[1])} amt={ss(t, DAY_SLIP, DAY_SLIP + 0.04) * (1 - ss(t, DAY_SLIP + 0.25, DAY_SLIP + 0.45))} seed={333} />
       {[0, 2, 1].map((i) => (
         <Friction key={i} t={t} p={w(i, js[i].hd[1])} amt={(st[i].slide ?? 0) * (i === 1 ? 1 : 0.8)} seed={i * 50} color={i === 2 ? '#ff6a3a' : '#ffb46a'} />
       ))}
       {/* Ego's crown: a glint on every second beat while he shows off */}
       {t > T.jump && t < T.slip ? <Glow p={add(w(1, js[1].head), [0.05, 0.28, 0.1])} w={0.5} h={0.5} color="#fff3c0" a={0.8 * hit(t, Math.floor((t - 4.649) / (2 * 0.46304)) * 2 * 0.46304 + 4.649, 9)} /> : null}
-      <Plume t={t} at={T.fell} x={XS[1]} bottom={bottom} />
+      <Plume t={t} at={T.fell} x={XS[1] - 0.45} bottom={0.55} />
       <Ring t={t} at={T.flash} p={MEET_W} r={1.3} color="#fff4d8" />
       <Ring t={t} at={T.flash + 0.1} p={MEET_W} r={0.8} color={TINT.gold} life={0.7} />
       {bursts.map((b, i) => (
