@@ -12,17 +12,17 @@ import {Gantry} from './env';
 
 const G = 9.8;
 const ROPE = mat('#b9b2a4', '#6a665e', {shade: '#2a2a38', rim: '#fff4dc', rimAmt: 0.3, rimPow: 2.4, wrap: 0.6, emit: 0.7});
-const STEEL = mat('#a6b2cc', '#3c465e', {shade: '#232a3c', rim: '#d6e2ff', rimAmt: 0.5, rimPow: 2.2, wrap: 0.6, spec: 0.6});
+export const STEEL = mat('#a6b2cc', '#3c465e', {shade: '#232a3c', rim: '#d6e2ff', rimAmt: 0.5, rimPow: 2.2, wrap: 0.6, spec: 0.6});
 const ROCK = mat('#3a4560', '#141a2a', {shade: '#0d111c', rim: '#ffcf9a', rimAmt: 0.35, rimPow: 2.6, wrap: 0.6});
-const GOLD = mat('#fff0b0', '#ffb22e', {shade: '#a85a14', rim: '#fff6d6', rimAmt: 0.7, rimPow: 2, wrap: 0.8, spec: 0.8, emit: 1.2});
-const BAND = mat('#e8f6ff', '#3cc8ff', {shade: '#1a4a9a', rim: '#ffffff', rimAmt: 0.5, wrap: 0.8, emit: 1.15});
+export const GOLD = mat('#fff0b0', '#ffb22e', {shade: '#a85a14', rim: '#fff6d6', rimAmt: 0.7, rimPow: 2, wrap: 0.8, spec: 0.8, emit: 1.2});
+export const BAND = mat('#e8f6ff', '#3cc8ff', {shade: '#1a4a9a', rim: '#ffffff', rimAmt: 0.5, wrap: 0.8, emit: 1.15});
 const FLAG = mat('#ffd27a', '#d0701a', {shade: '#4a1a06', rim: '#fff0c0', rimAmt: 0.35, rimPow: 2.4, wrap: 0.25, emit: 0.92});
 
 const q = (x: number, n = 16) => Math.round(clamp(x) * n) / n;
 /** porcelain going red-hot (burnt hands) */
-const redHot = (k: number): Mat => mat(mixHex('#ffffff', '#d8402e', k), mixHex('#a9b9d6', '#8a0e0a', k), {shade: mixHex('#56688f', '#4a0606', k), rim: mixHex('#dcebff', '#ff6a50', k), rimAmt: 0.45, rimPow: 2.2, wrap: 0.7, emit: 0.96 - 0.16 * k});
+export const redHot = (k: number): Mat => mat(mixHex('#ffffff', '#d8402e', k), mixHex('#a9b9d6', '#8a0e0a', k), {shade: mixHex('#56688f', '#4a0606', k), rim: mixHex('#dcebff', '#ff6a50', k), rimAmt: 0.45, rimPow: 2.2, wrap: 0.7, emit: 0.96 - 0.16 * k});
 /** porcelain gone cold */
-const spentMat = (k: number): Mat => mat(mixHex('#ffffff', '#b4bccc', k), mixHex('#a9b9d6', '#4a5266', k), {shade: mixHex('#56688f', '#2a3040', k), rim: mixHex('#dcebff', '#8a96b4', k), rimAmt: 0.5 - 0.15 * k, rimPow: 2.4, wrap: 0.75, emit: 0.96 - 0.2 * k});
+export const spentMat = (k: number): Mat => mat(mixHex('#ffffff', '#b4bccc', k), mixHex('#a9b9d6', '#4a5266', k), {shade: mixHex('#56688f', '#2a3040', k), rim: mixHex('#dcebff', '#8a96b4', k), rimAmt: 0.5 - 0.15 * k, rimPow: 2.4, wrap: 0.75, emit: 0.96 - 0.2 * k});
 
 /* ───────────── soft puffs with normal blending (clouds, dust) ───────────── */
 
@@ -39,7 +39,7 @@ void main(){
 }`;
 const plane = new THREE.PlaneGeometry(1, 1);
 
-const Puff: React.FC<{p: V3; w: number; h: number; color: string; a: number; seed?: number}> = ({p, w, h, color, a, seed = 0}) => {
+export const Puff: React.FC<{p: V3; w: number; h: number; color: string; a: number; seed?: number}> = ({p, w, h, color, a, seed = 0}) => {
   const material = useMemo(() => new THREE.ShaderMaterial({vertexShader: VERT, fragmentShader: PUFF, transparent: true, depthWrite: false, uniforms: {uC: {value: new THREE.Color()}, uA: {value: 0}, uSeed: {value: 0}}}), []);
   useEffect(() => () => material.dispose(), [material]);
   (material.uniforms.uC.value as THREE.Color).set(color);
@@ -210,7 +210,7 @@ const Clouds: React.FC<{t: number; cy: number}> = ({t, cy}) => (
 
 /* ───────────── signature props ───────────── */
 
-const Crown: React.FC<{j: J3}> = ({j}) => {
+export const Crown: React.FC<{j: J3}> = ({j}) => {
   const c = add(j.head, mul(j.up, HB.headR * 0.78));
   const s = j.side;
   const f = j.fwd;
@@ -234,8 +234,8 @@ const Crown: React.FC<{j: J3}> = ({j}) => {
 
 /* ───────────── particles ───────────── */
 
-type Burst = {at: number; p: V3; n: number; speed: number; color: string; life: number; seed: number; up?: number; size?: number; g?: number};
-const BurstFx: React.FC<{t: number; b: Burst}> = ({t, b}) => {
+export type Burst = {at: number; p: V3; n: number; speed: number; color: string; life: number; seed: number; up?: number; size?: number; g?: number};
+export const BurstFx: React.FC<{t: number; b: Burst}> = ({t, b}) => {
   const dt = t - b.at;
   if (dt < 0 || dt > b.life) return null;
   return (
@@ -255,7 +255,7 @@ const BurstFx: React.FC<{t: number; b: Burst}> = ({t, b}) => {
 };
 
 /** a ring of light in the frame plane (the rescue) */
-const Ring: React.FC<{t: number; at: number; p: V3; r: number; color: string; life?: number}> = ({t, at, p, r, color, life = 0.9}) => {
+export const Ring: React.FC<{t: number; at: number; p: V3; r: number; color: string; life?: number}> = ({t, at, p, r, color, life = 0.9}) => {
   const k = (t - at) / life;
   if (k < 0 || k > 1) return null;
   const e = 1 - Math.pow(1 - k, 3);
@@ -272,7 +272,7 @@ const Ring: React.FC<{t: number; at: number; p: V3; r: number; color: string; li
 };
 
 /** sparks off hands that slide down a rope */
-const Friction: React.FC<{t: number; p: V3; amt: number; seed: number; color?: string}> = ({t, p, amt, seed, color = '#ffb46a'}) => {
+export const Friction: React.FC<{t: number; p: V3; amt: number; seed: number; color?: string}> = ({t, p, amt, seed, color = '#ffb46a'}) => {
   if (amt <= 0.02) return null;
   return (
     <>

@@ -5,6 +5,7 @@ import {SG002Full, SG002_FPS, SG002_FRAMES} from './episodes/sg002-start-small/F
 import {SG003Full, SG003_FPS, SG003_FRAMES} from './episodes/sg003-same-bar/Full';
 import {SG004Full, SG004_FPS, SG004_FRAMES} from './episodes/sg004-hurt-ego/Full';
 import {SG005Full, SG005_FPS, SG005_FRAMES} from './episodes/sg005-top/Full';
+import {SG006Full, SG006_FPS, SG006_FRAMES} from './episodes/sg006-quit/Full';
 import {SGAvatarD, SGAvatarE, SGAvatarF, SGAvatarG} from './channels/stepglow/Avatars';
 import {SGAvatarA, SGAvatarB, SGAvatarC, SGBannerA, SGBannerB, SGBannerC, SGWatermark} from './channels/stepglow/Brand';
 
@@ -27,6 +28,7 @@ export const RemotionRoot: React.FC = () => {
       <Composition id="SG003-Full" component={SG003Full} durationInFrames={SG003_FRAMES} fps={SG003_FPS} width={1080} height={1920} defaultProps={{withAudio: true}} />
       <Composition id="SG004-Full" component={SG004Full} durationInFrames={SG004_FRAMES} fps={SG004_FPS} width={1080} height={1920} defaultProps={{withAudio: true}} />
       <Composition id="SG005-Full" component={SG005Full} durationInFrames={SG005_FRAMES} fps={SG005_FPS} width={1080} height={1920} defaultProps={{withAudio: true}} />
+      <Composition id="SG006-Full" component={SG006Full} durationInFrames={SG006_FRAMES} fps={SG006_FPS} width={1080} height={1920} defaultProps={{withAudio: true}} />
     </>
   );
 };
