@@ -10,6 +10,8 @@ import {BurstFx, Crown, GOLD, redHot, spentMat, type Burst} from '../sg005-top/W
 import {hit, K} from './grid';
 import {CAST, TINT, TINTS, TP, tw, WALL, type State} from './plan';
 import {clasp, PEG, solveR, TOP, TY} from './rig';
+import {CLAY, useSty} from './styles';
+import {ToonFig} from './toon';
 
 const G = 9.8;
 const q = (x: number, n = 16) => Math.round(clamp(x) * n) / n;
@@ -36,14 +38,14 @@ export const lights = (t: number) => {
 
 const FLOOR_VERT = /* glsl */ `varying vec3 vW; void main(){ vW = (modelMatrix * vec4(position, 1.0)).xyz; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`;
 const FLOOR_FRAG = /* glsl */ `
-uniform vec4 uP[6]; uniform vec3 uC[6]; uniform vec3 uBase; uniform float uHouse; varying vec3 vW;
+uniform vec4 uP[6]; uniform vec3 uC[6]; uniform vec3 uBase; uniform float uHouse, uGrid; varying vec3 vW;
 float h(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
 void main(){
   vec3 col = uBase;
   // faint boards of the stage floor
   vec2 g = abs(fract(vW.xz * vec2(0.5, 0.5)) - 0.5);
   float line = 1.0 - smoothstep(0.0, 0.012, min(g.x, g.y));
-  col += vec3(0.004, 0.006, 0.012) * line * uHouse;
+  col += vec3(0.004, 0.006, 0.012) * line * uHouse * uGrid;
   for (int i = 0; i < 6; i++) {
     vec4 p = uP[i];
     float d = length((vW.xz - p.xy) * vec2(1.0, 1.0));
@@ -57,6 +59,7 @@ void main(){
 const floorGeo = new THREE.PlaneGeometry(90, 90);
 
 const Floor: React.FC<{pools: {c: V3; r: number; a: number; color: string}[]; house: number}> = ({pools, house}) => {
+  const sty = useSty();
   const material = useMemo(
     () =>
       new THREE.ShaderMaterial({
@@ -67,6 +70,7 @@ const Floor: React.FC<{pools: {c: V3; r: number; a: number; color: string}[]; ho
           uC: {value: Array.from({length: 6}, () => new THREE.Color())},
           uBase: {value: new THREE.Color()},
           uHouse: {value: 1},
+          uGrid: {value: 1},
         },
       }),
     [],
@@ -78,8 +82,9 @@ const Floor: React.FC<{pools: {c: V3; r: number; a: number; color: string}[]; ho
     (u.uP.value[i] as THREE.Vector4).set(p ? p.c[0] : 0, p ? p.c[2] : 0, p ? p.r : 1, p ? p.a : 0);
     (u.uC.value[i] as THREE.Color).set(p ? p.color : '#000000');
   }
-  (u.uBase.value as THREE.Color).set(mixHex('#010205', '#04070f', house));
+  (u.uBase.value as THREE.Color).set(mixHex(sty.floor[0], sty.floor[1], house));
   u.uHouse.value = house;
+  u.uGrid.value = sty.grid;
   return <mesh geometry={floorGeo} material={material} rotation={[-Math.PI / 2, 0, 0]} renderOrder={0} />;
 };
 
@@ -114,7 +119,16 @@ const pad = (c: string) => {
   return padMat.get(c)!;
 };
 
+const tmats = new Map<string, [Mat, Mat]>();
+const tableMats = (st: [string, string], tp: [string, string]): [Mat, Mat] => {
+  const k = st.join() + tp.join();
+  if (!tmats.has(k)) tmats.set(k, [mat(st[0], st[1], {shade: mixHex(st[1], '#000000', 0.5), rim: mixHex(st[0], '#ffffff', 0.5), rimAmt: 0.45, rimPow: 2.2, wrap: 0.6, spec: 0.7}), mat(tp[0], tp[1], {shade: mixHex(tp[1], '#000000', 0.5), rim: mixHex(tp[0], '#ffffff', 0.5), rimAmt: 0.5, rimPow: 2.4, wrap: 0.6, spec: 0.9})]);
+  return tmats.get(k)!;
+};
+
 const Table: React.FC<{i: number; shake: number; color: string}> = ({i, shake, color}) => {
+  const sty = useSty();
+  const [STEEL, TOPM] = tableMats(sty.steel, sty.top);
   const c = tw(i);
   const s = K3;
   const y = TY * s;
@@ -186,7 +200,15 @@ const Wall: React.FC<{t: number; house: number}> = ({t, house}) => {
 const CRACKW = mat('#0a0d16', '#0a0d16', {shade: '#000000', rim: '#8fb0ff', rimAmt: 0.6, wrap: 0.5, emit: 1});
 
 /** silhouettes of a crowd in tiers far behind, and phone lights */
+const cmats = new Map<string, Mat>();
+const crowdMat = (c: string) => {
+  if (!cmats.has(c)) cmats.set(c, mat(c, mixHex(c, '#000000', 0.55), {shade: mixHex(c, '#000000', 0.7), rim: mixHex(c, '#ffffff', 0.4), rimAmt: 0.25, rimPow: 2.4, wrap: 0.7}));
+  return cmats.get(c)!;
+};
+
 const Crowd: React.FC<{t: number; house: number}> = ({t, house}) => {
+  const sty = useSty();
+  const CROWD = crowdMat(sty.crowd);
   const people = useMemo(() => {
     const p: {x: number; y: number; z: number; s: number; seed: number}[] = [];
     for (let r = 0; r < 5; r++) {
@@ -459,6 +481,7 @@ const fightAt = (t: number) => [
 
 export const World: React.FC<{t: number}> = ({t}) => {
   const look = useLook();
+  const sty = useSty();
   const L = lights(t);
   const st: State[] = CAST.map((f) => f(t));
   const js = st.map((s) => solveR(s.rig));
@@ -474,8 +497,8 @@ export const World: React.FC<{t: number}> = ({t}) => {
     const flare = 0.6 * (i < 4 ? hit(t, wins[i], 5) : hit(t, K.slam, 4));
     const ego = i === 2 ? 0.35 * ss(t, 12.6, 13.6) * (1 - ss(t, 16, 16.5)) : i === 3 ? 0.3 * ss(t, 18.6, 19.5) * (1 - ss(t, 24.5, 25.5)) : i === 4 ? 0.3 * ss(t, K.sure, K.seen) * (1 - ss(t, K.seen, K.slam)) : 0;
     const blue = i === 4 ? 0.5 * ss(t, K.seen, K.slam) : 0;
-    const col = mixHex(mixHex('#c9d6ff', TINT.ego, ego), TINT.dis, blue);
-    return {c: [c[0] + 0.1, 0, c[2] + 0.1] as V3, r: 2.0, a: (0.16 + 0.1 * flare) * L.spots[i], color: col};
+    const col = mixHex(mixHex(sty.pool, TINT.ego, ego), TINT.dis, blue);
+    return {c: [c[0] + 0.1, 0, c[2] + 0.1] as V3, r: 2.0, a: (0.16 + 0.1 * flare) * L.spots[i] * sty.poolAmt, color: col};
   });
   // Ego's own red glow on the floor in the dark, and wherever he is
   const egoW = W3(js[0].chest, [0, 0, 0], K3);
@@ -532,12 +555,12 @@ export const World: React.FC<{t: number}> = ({t}) => {
       {/* spot cones from the rig above */}
       {[0, 1, 2, 3, 4].map((i) => {
         const c = tw(i);
-        return <Cone key={`c${i}`} p={[c[0] + 0.1, 0, c[2] + 0.1]} r={1.7} h={7.5} color={pools[i].color} a={0.055 * L.spots[i] * (1 + 0.8 * (i < 4 ? hit(t, wins[i], 4) : hit(t, K.slam, 3)))} />;
+        return <Cone key={`c${i}`} p={[c[0] + 0.1, 0, c[2] + 0.1]} r={1.7} h={7.5} color={pools[i].color} a={0.055 * sty.cone * L.spots[i] * (1 + 0.8 * (i < 4 ? hit(t, wins[i], 4) : hit(t, K.slam, 3)))} />;
       })}
       {[0, 1, 2, 3, 4].map((i) => (
-        <Glow key={`l${i}`} p={[tw(i)[0] + 0.1, 7.4, tw(i)[2] + 0.1]} w={0.6} h={0.35} color="#ffffff" a={0.8 * L.spots[i]} />
+        <Glow key={`l${i}`} p={[tw(i)[0] + 0.1, 7.4, tw(i)[2] + 0.1]} w={0.6} h={0.35} color="#ffffff" a={0.8 * L.spots[i] * Math.min(1, sty.cone)} />
       ))}
-      <Glow p={[1.5, 2.6, -14]} w={22} h={8} color={look.bg.glow} a={0.35 * L.house} />
+      {sty.crowdAmt > 0 ? <Glow p={[1.5, 2.6, -14]} w={22} h={8} color={look.bg.glow} a={0.35 * L.house} /> : null}
       <Crowd t={t} house={L.house} />
       <Score t={t} house={L.house} />
       <Wall t={t} house={L.house} />
@@ -560,12 +583,23 @@ export const World: React.FC<{t: number}> = ({t}) => {
         const vis = Math.max(L.house, i === 0 ? 0.55 : i >= 4 ? L.spots[i - 1] : 0);
         return (
           <React.Fragment key={i}>
-            <Shadows j={j} amp={vis} />
-            <Man j={j} root={[0, 0, 0]} k={K3} l={l}>
-              {i === 0 && !crownFly ? <Crown j={j} /> : null}
-            </Man>
-            <Glow p={[c[0], 0.03, c[2]]} w={1.0} h={0.8} color={s.tint} a={(0.18 + 0.2 * Math.min(1.3, s.energy)) * (1 - s.spent) * vis} flat />
-            <Aura t={t} j={j} amt={s.aura * (i === 0 ? 1 : vis)} color={i === 0 ? '#ff3a22' : s.auraColor} seed={i * 1000} />
+            <Shadows j={j} amp={vis * sty.shadow} />
+            {sty.fig === 'porcelain' ? (
+              <Man j={j} root={[0, 0, 0]} k={K3} l={l}>
+                {i === 0 && !crownFly ? <Crown j={j} /> : null}
+              </Man>
+            ) : sty.fig === 'flat' || sty.fig === 'ink' ? null : (
+              <>
+                <ToonFig j={j} sty={sty} tint={s.tint} idx={i} energy={Math.min(1.3, s.energy) * vis} aura={s.aura} spent={s.spent} noArm={s.noArm} color={sty.fig === 'clay' ? CLAY[i] : undefined} />
+                {i === 0 && !crownFly ? (
+                  <group scale={[K3, K3, K3]}>
+                    <Crown j={j} />
+                  </group>
+                ) : null}
+              </>
+            )}
+            {sty.fig === 'clay' || sty.fig === 'ink' ? null : <Glow p={[c[0], 0.03, c[2]]} w={1.0} h={0.8} color={s.tint} a={(0.18 + 0.2 * Math.min(1.3, s.energy)) * (1 - s.spent) * vis} flat />}
+            {sty.fig === 'flat' || sty.fig === 'ink' ? null : <Aura t={t} j={j} amt={s.aura * (i === 0 ? 1 : vis) * (sty.fig === 'clay' ? 0.5 : 1)} color={i === 0 ? '#ff3a22' : s.auraColor} seed={i * 1000} />}
           </React.Fragment>
         );
       })}

@@ -9,6 +9,8 @@ import {hit, K, SECONDS, shake} from './grid';
 import {CAST, TINT, tw, WALL} from './plan';
 import {solveR} from './rig';
 import {World} from './World';
+import {FlatFigs} from './flat2d';
+import {STY, StyCtx, type Sty} from './styles';
 
 export const SG007_FPS = 60;
 export const SG007_SECONDS = SECONDS;
@@ -35,23 +37,23 @@ const egoAt = (t: number) => W3(solveR(CAST[0](t).rig).chest, [0, 0, 0], K3);
 /** the shots, cut on the reference's beats; each one moves from a to b */
 const SHOTS: [number, C, C][] = [
   [0, {...on(0, {dx: 0.2, dz: -1.2}), viewH: 5.6, cy: 0.75, pitch: 20, yaw: -32, fov: 34, roll: -3}, {...on(0, {dx: 0.1, dz: -0.8}), viewH: 4.4, cy: 0.85, pitch: 17, yaw: -24, fov: 34, roll: -1}],
-  [K.t1, on(0, {viewH: 3.4, yaw: -22, roll: -2}), on(0, {viewH: 2.9, yaw: -10, roll: 1})],
+  [K.t1, on(0, {viewH: 4.3, yaw: -22, roll: -2, cy: 0.85}), on(0, {viewH: 3.8, yaw: -10, roll: 1, cy: 0.85})],
   [K.w1, on(0, {viewH: 2.9, dx: -0.6, yaw: -8, pitch: 6, cy: 0.9}), on(0, {viewH: 3.6, dx: -0.4, dz: -0.9, yaw: -14, pitch: 9, cy: 0.9})],
   [K.t2, on(1, {viewH: 3.3, yaw: 18, roll: 2}), on(1, {viewH: 2.9, yaw: 8, roll: 0})],
   [K.w2, on(1, {viewH: 3.4, dx: 0.3, yaw: 26, pitch: 7, cy: 0.75}), on(1, {viewH: 3.8, dx: 0.1, dz: -0.6, yaw: 18, pitch: 10, cy: 0.8})],
   [K.t3, on(2, {viewH: 3.3, yaw: -20}), on(2, {viewH: 2.9, yaw: -12})],
-  [K.losing, on(2, {viewH: 2.7, yaw: -38, pitch: 3, cy: 1.0, roll: 6}), on(2, {viewH: 2.4, yaw: -30, pitch: 2, cy: 1.0, roll: 8})],
+  [K.losing, on(2, {viewH: 4.1, yaw: -34, pitch: 6, cy: 0.85, roll: 5}), on(2, {viewH: 3.7, yaw: -28, pitch: 5, cy: 0.85, roll: 7})],
   [K.w3, on(2, {viewH: 3.0, dx: -0.6, yaw: -10, pitch: -9, cy: 1.15, roll: -5}), on(2, {viewH: 3.3, dx: -0.6, yaw: -16, pitch: -7, cy: 1.15, roll: -3})],
   [K.dark, {...on(2, {dx: 0.4, dz: -1.6}), viewH: 6.2, cy: 0.9, pitch: 18, yaw: -14, fov: 32, roll: 0}, {...on(2, {dx: 0.4, dz: -2.0}), viewH: 5.4, cy: 0.9, pitch: 15, yaw: -10, fov: 32, roll: 0}],
   [K.t4, on(3, {viewH: 3.2, yaw: -18}), on(3, {viewH: 2.9, yaw: -6})],
-  [K.never, on(3, {viewH: 2.6, yaw: 36, pitch: 4, roll: -6, dx: 0.15}), on(3, {viewH: 2.4, yaw: 30, pitch: 3, roll: -8, dx: 0.15})],
-  [K.wont, on(3, {viewH: 2.5, yaw: -36, pitch: 3, roll: 7, dx: -0.15}), on(3, {viewH: 2.3, yaw: -30, pitch: 2, roll: 9, dx: -0.15})],
+  [K.never, on(3, {viewH: 3.2, yaw: 34, pitch: 5, roll: -5, dx: 0.1}), on(3, {viewH: 3.0, yaw: 28, pitch: 4, roll: -7, dx: 0.1})],
+  [K.wont, on(3, {viewH: 3.1, yaw: -34, pitch: 5, roll: 6, dx: -0.1}), on(3, {viewH: 2.9, yaw: -28, pitch: 4, roll: 8, dx: -0.1})],
   [K.broke, on(3, {viewH: 3.4, yaw: 8, pitch: 14, cy: 0.8}), on(3, {viewH: 3.7, yaw: 12, pitch: 15, cy: 0.8})],
   [K.s4, on(3, {viewH: 3.3, yaw: 22, pitch: 8, cy: 0.8, dx: 0.2}), on(3, {viewH: 3.5, yaw: 16, pitch: 9, cy: 0.85})],
   [K.t5, on(4, {viewH: 3.8, yaw: -8, pitch: 10, dx: -0.3}), on(4, {viewH: 3.3, yaw: -4, pitch: 10, dx: -0.2})],
   [K.sure, on(4, {viewH: 3.0, yaw: -22, pitch: 8}), on(4, {viewH: 2.7, yaw: -18, pitch: 7, roll: 2})],
-  [K.seen, on(4, {viewH: 2.8, yaw: 26, pitch: 6, dx: 0.15}), on(4, {viewH: 2.3, yaw: 18, pitch: 5, dx: 0.2})],
-  [K.slam, {...on(4, {dx: -1.25, dz: 0.2}), viewH: 3.9, cy: 0.75, pitch: 8, yaw: 4, fov: 34, roll: 0}, {...on(4, {dx: -1.35, dz: 0.2}), viewH: 3.6, cy: 0.7, pitch: 8, yaw: 8, fov: 34, roll: 0}],
+  [K.seen, on(4, {viewH: 3.2, yaw: 26, pitch: 6, dx: 0.1}), on(4, {viewH: 2.8, yaw: 18, pitch: 5, dx: 0.1})],
+  [K.slam, {...on(4, {dx: -1.25, dz: 0.2}), viewH: 4.8, cy: 0.75, pitch: 8, yaw: 4, fov: 34, roll: 0}, {...on(4, {dx: -1.35, dz: 0.2}), viewH: 4.4, cy: 0.7, pitch: 8, yaw: 8, fov: 34, roll: 0}],
   [K.blink, {viewH: 2.6, cx: WALL.x * K3 + 0.6, cy: 0.55, cz: WALL.z * K3, pitch: 8, yaw: 60, fov: 30, roll: 0}, {viewH: 2.3, cx: WALL.x * K3 + 0.55, cy: 0.55, cz: WALL.z * K3, pitch: 7, yaw: 52, fov: 30, roll: 0}],
   [K.all, {viewH: 7.6, cx: 0.9, cy: 0.4, cz: -5.4, pitch: 34, yaw: -36, fov: 34, roll: 0}, {viewH: 9.2, cx: 0.6, cy: 0.4, cz: -6.2, pitch: 46, yaw: -46, fov: 34, roll: 0}],
 ];
@@ -110,7 +112,7 @@ const Caption: React.FC<{t: number}> = ({t}) => {
   return (
     <div style={{position: 'absolute', left: 540, top: 1470, transform: `translate(-50%, -50%) scale(${1 + 0.12 * (1 - e)})`, whiteSpace: 'pre', fontFamily: 'Sora', fontWeight: 600, fontSize: size, letterSpacing: '0.005em', opacity: o, textShadow: shadow}}>
       {parts.map(([s, col], i) => (
-        <span key={i} style={{color: col ?? '#f4f7ff', textShadow: col ? `${shadow}, 0 0 30px ${col}77` : shadow}}>
+        <span key={i} style={{color: col ?? 'var(--txt)', textShadow: col ? `var(--shd), 0 0 30px ${col}77` : 'var(--shd)'}}>
           {s}
         </span>
       ))}
@@ -223,9 +225,15 @@ const Speed: React.FC<{t: number; at: number; colors: [string, string]; life?: n
   );
 };
 
+/** caption colour per style: plain words take the style's text colour */
+const StyText: React.FC<{sty: Sty; children: React.ReactNode}> = ({sty, children}) => (
+  <div style={{position: 'absolute', inset: 0, ['--txt' as string]: sty.text, ['--shd' as string]: sty.textShadow}}>{children}</div>
+);
+
 const darkness = (t: number) => Math.max(1 - seg(t, 0.0, 0.3), seg(t, SECONDS - 0.4, SECONDS - 0.05));
 
-export const SG007Full: React.FC<{withAudio?: boolean}> = ({withAudio = true}) => {
+export const SG007Full: React.FC<{withAudio?: boolean; style?: string}> = ({withAudio = true, style = 'toon'}) => {
+  const sty: Sty = STY[style] ?? STY.toon;
   const frame = useCurrentFrame();
   const {fps} = useVideoConfig();
   const t = frame / fps;
@@ -236,16 +244,21 @@ export const SG007Full: React.FC<{withAudio?: boolean}> = ({withAudio = true}) =
   const red = 0.22 * clamp(ego.aura - 0.3) * (t < K.slam ? 1 : 0) + 0.15 * hit(t, K.w3, 3);
   return (
     <AbsoluteFill style={{background: SG.bg.edge}}>
-      <Stage look={SG} cam={c}>
-        <World t={t} />
+      <Stage look={sty.look} cam={c}>
+        <StyCtx.Provider value={sty}>
+          <World t={t} />
+        </StyCtx.Provider>
       </Stage>
-      <AbsoluteFill style={{background: 'radial-gradient(ellipse 80% 62% at 50% 50%, rgba(255,40,20,0) 45%, rgba(255,40,20,1) 100%)', opacity: red, mixBlendMode: 'screen'}} />
+      {sty.fig === 'flat' || sty.fig === 'ink' ? <FlatFigs t={t} c={c} sty={sty} /> : null}
+      <AbsoluteFill style={{background: 'radial-gradient(ellipse 80% 62% at 50% 50%, rgba(255,40,20,0) 45%, rgba(255,40,20,1) 100%)', opacity: red * (sty.fig === 'clay' || sty.fig === 'ink' ? 0.4 : 1), mixBlendMode: sty.fig === 'clay' || sty.fig === 'ink' ? 'multiply' : 'screen'}} />
       <Speed t={t} at={K.w3} colors={['#ff4a3a', '#ffffff']} />
       <Speed t={t} at={K.slam} colors={['#3cc8ff', '#ffffff']} life={0.5} />
       <Labels t={t} c={c} />
       <Bubble t={t} c={c} />
       <Title t={t} />
-      <Caption t={t} />
+      <StyText sty={sty}>
+        <Caption t={t} />
+      </StyText>
       <End t={t} />
       <AbsoluteFill style={{background: '#f2f6ff', opacity: flash}} />
       <AbsoluteFill style={{background: SG.bg.edge, opacity: darkness(t)}} />
