@@ -9,12 +9,13 @@ import {add, HB, K3, mul, W3, type J3} from '../sg003-same-bar/rig3';
 import {CAST, TINTS, tw} from './plan';
 import {PEG, solveR, TOP, TY} from './rig';
 import {CartoonMan, type Design} from './cartoon';
+import {BlockMan} from './blockman';
 
 /**
  * SG007 "real" looks: physically lit 3D sets (PBR materials, spot lights with soft shadows, an environment map for
  * reflections, filmic tone mapping) and cartoon 3D stickmen (glossy vinyl, big eyes, mitten hands, round boots).
  */
-export type RealEnv = 'hall' | 'pub' | 'garage' | 'gym';
+export type RealEnv = 'hall' | 'pub' | 'garage' | 'gym' | 'pro';
 
 /* ───────────── renderer setup: shadows, tone mapping, reflections ───────────── */
 
@@ -481,7 +482,7 @@ const Gym: React.FC = () => {
 
 /* ───────────── the scene ───────────── */
 
-const EXPO: Record<RealEnv, [number, number]> = {hall: [1.0, 0.25], pub: [1.05, 0.15], garage: [1.1, 0.1], gym: [0.95, 0.5]};
+const EXPO: Record<RealEnv, [number, number]> = {hall: [1.0, 0.25], pub: [1.05, 0.15], garage: [1.1, 0.1], gym: [0.95, 0.5], pro: [1.05, 0.22]};
 const PAL = ['#ff5a4a', '#ffa83a', '#5fd8a0', '#ffd84a', '#a77cff', '#4ab8ff'];
 
 export const RealScene: React.FC<{t: number; env: RealEnv; colored: boolean; design?: Design}> = ({t, env, colored, design}) => {
@@ -489,15 +490,229 @@ export const RealScene: React.FC<{t: number; env: RealEnv; colored: boolean; des
   return (
     <>
       <Setup exposure={EXPO[env][0]} envAmt={EXPO[env][1]} />
-      {env === 'hall' ? <Hall /> : env === 'pub' ? <Pub /> : env === 'garage' ? <Garage /> : <Gym />}
+      {env === 'pro' ? <HallPro t={t} /> : env === 'hall' ? <Hall /> : env === 'pub' ? <Pub /> : env === 'garage' ? <Garage /> : <Gym />}
       {[0, 1, 2, 3, 4].map((i) => (
         <ArmTable key={i} i={i} pad={['#e8a020', '#2aa070', '#e8c020', '#7a4ad8', '#2a7ad8'][i]} />
       ))}
-      {design
+      {env === 'pro'
+        ? st.map((s, i) => <BlockMan key={i} j={solveR(s.rig)} idx={i} spent={s.spent} energy={s.energy} noArm={s.noArm} crown={i === 0 && t < 30.1} light={TINTS[i]} />)
+        : design
         ? st.map((s, i) => <CartoonMan key={i} j={solveR(s.rig)} design={design} idx={i} spent={s.spent} noArm={s.noArm} crown={i === 0 && t < 30.1} />)
         : st.map((s, i) => (
         <CartoonFig key={i} j={solveR(s.rig)} color={colored ? PAL[i] : '#f4f6fb'} tint={TINTS[i]} idx={i} spent={s.spent} aura={s.aura} noArm={s.noArm} crown={i === 0 && t < 30.1} t={t} />
       ))}
+    </>
+  );
+};
+
+/* ───────────── the chosen set: a real tournament hall, built out ───────────── */
+
+/** court lines painted on the parquet */
+const courtLines = (g: CanvasRenderingContext2D, s: number) => {
+  g.clearRect(0, 0, s, s);
+  g.strokeStyle = 'rgba(255,255,255,0.85)';
+  g.lineWidth = 10;
+  g.strokeRect(40, 40, s - 80, s - 80);
+  g.beginPath();
+  g.arc(s / 2, s / 2, s * 0.16, 0, Math.PI * 2);
+  g.stroke();
+  g.strokeStyle = 'rgba(40,120,220,0.9)';
+  g.lineWidth = 8;
+  g.strokeRect(80, 80, s - 160, s - 160);
+};
+
+/** spectators made of blocks, instanced */
+const CrowdBlocks: React.FC<{t: number}> = ({t}) => {
+  const n = 420;
+  const data = useMemo(
+    () =>
+      Array.from({length: n}, (_, i) => {
+        const r = Math.floor(i / 70);
+        const k = i % 70;
+        return {x: -12 + k * 0.36 + (R(i) - 0.5) * 0.16, y: 0.62 + r * 0.9, z: -12.45 - r * 0.5, c: ['#5a6a8a', '#8a5a5a', '#6a8a6a', '#8a7a5a', '#6a5a8a', '#4a5a6a', '#9a9aa8'][Math.floor(R(i + 9) * 7)], s: 0.9 + 0.2 * R(i + 3), seed: i, skip: R(i + 1) < 0.12};
+      }),
+    [],
+  );
+  const bodyGeo = useMemo(() => new THREE.BoxGeometry(0.34, 0.3, 0.2), []);
+  const headGeo = useMemo(() => new THREE.BoxGeometry(0.19, 0.18, 0.18), []);
+  const mat = useMemo(() => new THREE.MeshStandardMaterial({roughness: 0.7}), []);
+  const refs = React.useRef<[THREE.InstancedMesh | null, THREE.InstancedMesh | null]>([null, null]);
+  const m4 = new THREE.Matrix4();
+  const col = new THREE.Color();
+  React.useLayoutEffect(() => {
+    const [b, h] = refs.current;
+    if (!b || !h) return;
+    data.forEach((p, i) => {
+      const cheer = Math.max(0, Math.sin(t * 6 + p.seed)) * 0.04 * (R(p.seed + 2) > 0.6 ? 1 : 0);
+      const sc = p.skip ? 0 : p.s;
+      const lean = (R(p.seed + 5) - 0.5) * 0.3;
+      const rot = new THREE.Matrix4().makeRotationZ(lean);
+      m4.makeScale(sc, sc, sc).premultiply(rot).setPosition(p.x, p.y + 0.27 + cheer, p.z);
+      b.setMatrixAt(i, m4);
+      m4.makeScale(sc, sc, sc).premultiply(new THREE.Matrix4().makeRotationZ(lean * 1.5 + (R(p.seed + 6) - 0.5) * 0.4)).setPosition(p.x - lean * 0.25, p.y + 0.54 * p.s + cheer, p.z + (R(p.seed + 7) - 0.5) * 0.05);
+      h.setMatrixAt(i, m4);
+      col.set(p.c);
+      b.setColorAt(i, col);
+      col.set(['#e8c8a8', '#c89a78', '#8a6248', '#f0d8c0'][Math.floor(R(p.seed + 8) * 4)]);
+      h.setColorAt(i, col);
+    });
+    b.instanceMatrix.needsUpdate = h.instanceMatrix.needsUpdate = true;
+    if (b.instanceColor) b.instanceColor.needsUpdate = true;
+    if (h.instanceColor) h.instanceColor.needsUpdate = true;
+  });
+  return (
+    <>
+      <instancedMesh ref={(r) => void (refs.current[0] = r)} args={[bodyGeo, mat, n]} />
+      <instancedMesh ref={(r) => void (refs.current[1] = r)} args={[headGeo, mat, n]} />
+    </>
+  );
+};
+
+/** a box truss beam from a to b at height y (four chords and zig-zag braces) */
+const Truss: React.FC<{a: V3; b: V3}> = ({a, b}) => {
+  const m = std('#9aa0aa', 0.35, 0.9);
+  const h = 0.16;
+  const L = Math.hypot(b[0] - a[0], b[2] - a[2]);
+  const n = Math.round(L / 0.35);
+  const dir: V3 = [(b[0] - a[0]) / L, 0, (b[2] - a[2]) / L];
+  const perp: V3 = [-dir[2], 0, dir[0]];
+  const off = (u: number, v: number): V3 => [perp[0] * u * h, v * h, perp[2] * u * h];
+  const chords = [off(-1, -1), off(1, -1), off(-1, 1), off(1, 1)];
+  return (
+    <>
+      {chords.map((o, i) => (
+        <Seg key={i} a={add(a, o)} b={add(b, o)} r={0.018} m={m} cast={false} />
+      ))}
+      {Array.from({length: n}, (_, i) => {
+        const p0 = add(a, mul(dir, (L * i) / n));
+        const p1 = add(a, mul(dir, (L * (i + 1)) / n));
+        return (
+          <React.Fragment key={i}>
+            <Seg a={add(p0, off(-1, -1))} b={add(p1, off(-1, 1))} r={0.008} m={m} cast={false} />
+            <Seg a={add(p0, off(1, -1))} b={add(p1, off(1, 1))} r={0.008} m={m} cast={false} />
+          </React.Fragment>
+        );
+      })}
+    </>
+  );
+};
+
+/** a par-can light hanging under the truss, its beam in the haze */
+const ParCan: React.FC<{p: V3; to: V3; color: string; a: number}> = ({p, to, color, a}) => {
+  const d = norm3(sub3(to, p));
+  const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, -1, 0), new THREE.Vector3(...d));
+  const L = Math.hypot(to[0] - p[0], to[1] - p[1], to[2] - p[2]);
+  return (
+    <>
+      <mesh position={p} quaternion={q} material={std('#15161a', 0.4, 0.7)}>
+        <cylinderGeometry args={[0.11, 0.14, 0.26, 20]} />
+      </mesh>
+      <mesh position={add(p, mul(d, 0.135))} quaternion={q} material={P(`lens${color}`, () => new THREE.MeshBasicMaterial({color: new THREE.Color(color).multiplyScalar(3)}))}>
+        <circleGeometry args={[0.1, 20]} />
+      </mesh>
+      <mesh position={add(p, mul(d, L / 2))} quaternion={q} renderOrder={7} material={beamMat(color, a)}>
+        <cylinderGeometry args={[0.1, 0.75, L, 32, 1, true]} />
+      </mesh>
+    </>
+  );
+};
+const sub3 = (a: V3, b: V3): V3 => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+const norm3 = (a: V3): V3 => {
+  const l = Math.hypot(...a) || 1;
+  return [a[0] / l, a[1] / l, a[2] / l];
+};
+const BEAM_FRAG = `uniform vec3 uC; uniform float uA; varying vec2 vUv; varying vec3 vN; varying vec3 vV;
+void main(){ float f = pow(abs(dot(normalize(vN), normalize(vV))), 1.6); float a = uA * f * (0.25 + 0.75 * vUv.y); gl_FragColor = vec4(uC * a, a); }`;
+const BEAM_VERT = `varying vec2 vUv; varying vec3 vN; varying vec3 vV; void main(){ vUv = uv; vec4 mv = modelViewMatrix * vec4(position, 1.0); vN = normalize(normalMatrix * normal); vV = -mv.xyz; gl_Position = projectionMatrix * mv; }`;
+const beamMat = (c: string, a: number) => P(`beam${c}${a}`, () => new THREE.ShaderMaterial({vertexShader: BEAM_VERT, fragmentShader: BEAM_FRAG, transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, uniforms: {uC: {value: new THREE.Color(c)}, uA: {value: a}}, fog: false}));
+
+export const HallPro: React.FC<{t: number}> = ({t}) => {
+  const floor = P('parquetPro', () => new THREE.MeshPhysicalMaterial({map: canvasTex('parquet2', 1024, planks('#b5824c', '#d6a76c', '#6a4422'), [7, 7]), roughness: 0.38, clearcoat: 0.55, clearcoatRoughness: 0.22}));
+  const lines = P('court', () => new THREE.MeshBasicMaterial({map: canvasTex('court', 1024, courtLines, [1, 1]), transparent: true, depthWrite: false, opacity: 0.7}));
+  const carpet = P('carpet', () => new THREE.MeshStandardMaterial({color: '#7a1218', roughness: 0.95}));
+  const goldTrim = std('#d8a83a', 0.35, 0.8);
+  const board = std('#121620', 0.6, 0.2);
+  const seat = std('#14244a', 0.7);
+  const stand = std('#16181e', 0.9);
+  const screen = P('screen', () => new THREE.MeshBasicMaterial({color: new THREE.Color('#1a3a8a').multiplyScalar(1.4)}));
+  const led = (c: string) => P(`led${c}`, () => new THREE.MeshBasicMaterial({color: new THREE.Color(c).multiplyScalar(2.2)}));
+  const z0 = -5.5;
+  return (
+    <>
+      <color attach="background" args={['#07080d']} />
+      <fogExp2 attach="fog" args={['#120f16', 0.055]} />
+      <Floor m={floor} />
+      {/* court lines and the red runway with gold edges along the tables */}
+      <mesh position={[1.1, 0.002, z0]} rotation={[-Math.PI / 2, 0, -0.2]} material={lines}>
+        <planeGeometry args={[9, 16]} />
+      </mesh>
+      <mesh position={[1.1, 0.004, z0]} rotation={[-Math.PI / 2, 0, 0.2]} material={carpet} receiveShadow>
+        <planeGeometry args={[3.2, 15]} />
+      </mesh>
+      {[-1, 1].map((s) => (
+        <mesh key={s} position={[1.1 + s * 1.62 * Math.cos(0.2), 0.006, z0 + s * 1.62 * Math.sin(-0.2)]} rotation={[-Math.PI / 2, 0, 0.2]} material={goldTrim}>
+          <planeGeometry args={[0.06, 15]} />
+        </mesh>
+      ))}
+      {/* barrier boards with an LED strip */}
+      <Bx p={[1.2, 0.45, -11.2]} s={[20, 0.9, 0.12]} m={board} />
+      <mesh position={[1.2, 0.82, -11.13]} material={led('#3aa0ff')}>
+        <planeGeometry args={[20, 0.05]} />
+      </mesh>
+      {Array.from({length: 8}, (_, k) => (
+        <mesh key={k} position={[-7 + k * 2.4, 0.45, -11.13]} material={P(`panel${k}`, () => new THREE.MeshStandardMaterial({color: ['#c8202a', '#1e3e8a', '#f4c430', '#1e3e8a'][k % 4], roughness: 0.5, emissive: ['#c8202a', '#1e3e8a', '#f4c430', '#1e3e8a'][k % 4], emissiveIntensity: 0.25}))}>
+          <planeGeometry args={[2.1, 0.55]} />
+        </mesh>
+      ))}
+      {/* stands, seats, the crowd */}
+      {Array.from({length: 6}, (_, r) => (
+        <React.Fragment key={r}>
+          <Bx p={[1, 0.25 + r * 0.45, -12.6 - r * 0.5]} s={[26, 0.5 + r * 0.9, 0.5]} m={stand} cast={false} />
+          <Bx p={[1, 0.62 + r * 0.9, -12.42 - r * 0.5]} s={[25.5, 0.1, 0.36]} m={seat} cast={false} />
+        </React.Fragment>
+      ))}
+      <CrowdBlocks t={t} />
+      {/* the big screen and its frame */}
+      <Bx p={[1.1, 6.4, -15.6]} s={[9.6, 3.4, 0.2]} m={std('#0c0d12', 0.5, 0.6)} cast={false} />
+      <mesh position={[1.1, 6.4, -15.48]} material={screen}>
+        <planeGeometry args={[9.2, 3.0]} />
+      </mesh>
+      {Array.from({length: 5}, (_, k) => (
+        <mesh key={k} position={[1.1 + (k - 2) * 1.6, 6.4, -15.46]} material={led(['#ef4b3f', '#f59a2e', '#3fc495', '#f2c531', '#9a6cf0'][k])}>
+          <planeGeometry args={[1.2, 1.2]} />
+        </mesh>
+      ))}
+      {/* truss over the tables, a par can over each, two cool back lights */}
+      <Truss a={[-1.8, 4.6, 1.5]} b={[4.0, 4.6, -12.5]} />
+      <Truss a={[-3.5, 4.6, -3]} b={[6.5, 4.6, -3]} />
+      <Truss a={[-3.5, 4.6, -9]} b={[6.5, 4.6, -9]} />
+      {TABLES.map((c, i) => {
+        const p: V3 = [c[0] - 0.4, 4.42, c[2] + 0.5];
+        return (
+          <React.Fragment key={i}>
+            <ParCan p={p} to={[c[0], 0, c[2]]} color="#ffe8c8" a={0.07} />
+            <Spot p={p} target={[c[0], 0.6, c[2]]} color="#ffe6c4" intensity={i < 3 ? 6.5 : 4.5} angle={0.5} shadow={i === 0 || i === 2} />
+          </React.Fragment>
+        );
+      })}
+      {[-3.2, 5.8].map((x, k) => (
+        <React.Fragment key={k}>
+          <ParCan p={[x, 4.4, -3]} to={[1.1, 0, -5 - 2 * k]} color="#5a8aff" a={0.05} />
+          <Spot p={[x, 4.4, -3]} target={[1.1, 0.8, -5]} color="#6a96ff" intensity={4} angle={0.7} shadow={false} />
+        </React.Fragment>
+      ))}
+      <Spot p={[1.1, 3, 6]} target={[1.1, 0.8, -2]} color="#ffd8b0" intensity={1.6} angle={0.6} shadow={false} />
+      <hemisphereLight args={['#8aa0d8', '#3a2414', 0.3]} />
+      {/* dust in the beams */}
+      {Array.from({length: 60}, (_, i) => {
+        const c = TABLES[i % 5];
+        const y = 0.3 + ((R(i + 2) + t * 0.03) % 1) * 3.8;
+        return (
+          <mesh key={`d${i}`} position={[c[0] + (R(i + 3) - 0.5) * 1.2, y, c[2] + (R(i + 4) - 0.5) * 1.2]} material={P('dust', () => new THREE.MeshBasicMaterial({color: '#fff0d8', transparent: true, opacity: 0.6}))}>
+            <sphereGeometry args={[0.008, 6, 4]} />
+          </mesh>
+        );
+      })}
     </>
   );
 };

@@ -41,7 +41,7 @@ export type Sty = {
   env?: Env;
   cap?: CSSProperties;
   /** round 3: a physically lit set with cartoon 3D characters */
-  real?: {env: 'hall' | 'pub' | 'garage' | 'gym'; colored: boolean; design?: 'cel2d' | 'classic' | 'bean' | 'rubber' | 'block' | 'ring'};
+  real?: {env: 'hall' | 'pub' | 'garage' | 'gym' | 'pro'; colored: boolean; design?: 'cel2d' | 'classic' | 'bean' | 'rubber' | 'block' | 'ring'};
 };
 
 const night = {...SG, bg: {center: '#111a30', edge: '#020308', glow: '#2c4a8a', glowAmt: 0.28}};
@@ -290,7 +290,14 @@ export const CARTOONS: Sty[] = [
   toonIn('c-block', 'Toy blocks', 'block'),
   toonIn('c-ring', 'Colour line', 'ring'),
 ];
-export const STY = Object.fromEntries([...STYLES, ...WORLDS, ...REALS, ...CARTOONS].map((s) => [s.id, s])) as Record<string, Sty>;
+/** the chosen look: toy blocks in the built-out tournament hall, graded, new fonts */
+export const BLOCKS: Sty = {
+  ...realBase('blocks', 'Toy Blocks · Tournament', 'hall', false, '#ffffff', '0 4px 0 #1a0e0a, 0 0 2px #1a0e0a, 0 8px 24px rgba(0,0,0,0.75)'),
+  real: {env: 'pro', colored: true},
+  look: {...SG, bloom: {strength: 0.2, radius: 0.45, threshold: 0.96}, vignette: 0.42, grain: 0},
+  cap: {fontFamily: 'Nunito', fontWeight: 900, letterSpacing: '0.005em', WebkitTextStroke: '3px #1a0e0a', paintOrder: 'stroke fill'},
+};
+export const STY = Object.fromEntries([...STYLES, ...WORLDS, ...REALS, ...CARTOONS, BLOCKS].map((s) => [s.id, s])) as Record<string, Sty>;
 
 export const StyCtx = createContext<Sty>(STY.porcelain);
 export const useSty = () => useContext(StyCtx);

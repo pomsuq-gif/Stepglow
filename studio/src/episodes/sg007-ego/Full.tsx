@@ -112,7 +112,7 @@ const Caption: React.FC<{t: number}> = ({t}) => {
   const e = 1 - Math.pow(1 - k, 3);
   const o = e * (1 - clamp((t - (b - 0.06)) / 0.06));
   return (
-    <div style={{position: 'absolute', left: 540, top: 1470, transform: `translate(-50%, -50%) scale(${1 + 0.12 * (1 - e)})`, whiteSpace: 'pre', fontFamily: 'Sora', fontWeight: 600, fontSize: size, letterSpacing: '0.005em', opacity: o, textShadow: shadow}}>
+    <div style={{position: 'absolute', left: 540, top: 1470, transform: `translate(-50%, -50%) scale(${1 + 0.12 * (1 - e)})`, whiteSpace: 'pre', fontFamily: 'var(--capf)', fontWeight: 'var(--capw)' as unknown as number, WebkitTextStroke: 'var(--stroke)', paintOrder: 'stroke fill', fontSize: size, letterSpacing: '0.005em', opacity: o, textShadow: shadow}}>
       <div style={{display: 'inline-block', ...box}}>
       {parts.map(([s, col], i) => (
         <span key={i} style={{color: col ?? 'var(--txt)', textShadow: col ? `var(--shd), 0 0 30px ${col}77` : 'var(--shd)'}}>
@@ -129,7 +129,7 @@ const Title: React.FC<{t: number}> = ({t}) => {
   if (o <= 0) return null;
   const k = ss(t, 0.15, 0.5);
   return (
-    <div style={{position: 'absolute', left: 540, top: 1440, transform: `translate(-50%, -50%) scale(${1.15 - 0.15 * k})`, textAlign: 'center', opacity: o, fontFamily: 'Sora', fontWeight: 600}}>
+    <div style={{position: 'absolute', left: 540, top: 1440, transform: `translate(-50%, -50%) scale(${1.15 - 0.15 * k})`, textAlign: 'center', opacity: o, fontFamily: 'var(--capf)', fontWeight: 'var(--capw)' as unknown as number, WebkitTextStroke: 'var(--stroke)', paintOrder: 'stroke fill'}}>
       <div style={{fontSize: 96, letterSpacing: '-0.01em', whiteSpace: 'pre', textShadow: shadow}}>
         <span style={{color: TINT.ego, textShadow: `${shadow}, 0 0 40px ${TINT.ego}99`}}>Ego</span>
         <span style={{color: '#f4f7ff'}}> vs everyone</span>
@@ -145,12 +145,12 @@ const End: React.FC<{t: number}> = ({t}) => {
   const k2 = ss(t, K.end + 0.5, K.end + 0.8);
   return (
     <>
-      <div style={{position: 'absolute', left: 540, top: 1380, transform: `translate(-50%, -50%) scale(${1.2 - 0.2 * k})`, opacity: k, whiteSpace: 'pre', fontFamily: 'Sora', fontWeight: 600, fontSize: 104, letterSpacing: '-0.01em'}}>
+      <div style={{position: 'absolute', left: 540, top: 1380, transform: `translate(-50%, -50%) scale(${1.2 - 0.2 * k})`, opacity: k, whiteSpace: 'pre', fontFamily: 'var(--capf)', fontWeight: 'var(--capw)' as unknown as number, WebkitTextStroke: 'var(--stroke)', paintOrder: 'stroke fill', fontSize: 104, letterSpacing: '-0.01em'}}>
         <span style={{color: TINT.dis, textShadow: `${shadow}, 0 0 40px ${TINT.dis}aa`}}>Discipline</span>
         <span style={{color: '#f4f7ff', textShadow: shadow}}>{' > '}</span>
         <span style={{color: TINT.ego, textShadow: `${shadow}, 0 0 40px ${TINT.ego}99`}}>Ego</span>
       </div>
-      <div style={{position: 'absolute', left: 540, top: 1500, transform: 'translate(-50%, -50%)', opacity: k2, fontFamily: 'Sora', fontWeight: 600, fontSize: 54, color: '#f4f7ff', textShadow: shadow}}>Agree? ↓</div>
+      <div style={{position: 'absolute', left: 540, top: 1500, transform: 'translate(-50%, -50%)', opacity: k2, fontFamily: 'var(--capf)', fontWeight: 'var(--capw)' as unknown as number, WebkitTextStroke: 'var(--stroke)', paintOrder: 'stroke fill', fontSize: 54, color: '#f4f7ff', textShadow: shadow}}>Agree? ↓</div>
     </>
   );
 };
@@ -175,7 +175,7 @@ const Bubble: React.FC<{t: number; c: Cam}> = ({t, c}) => {
   const loud = s.includes('!');
   return (
     <div style={{position: 'absolute', left: clamp(x, 240, 840), top: Math.max(y, 250), transform: `translate(-50%, -100%) scale(${pop * (0.7 + 0.3 * k)})`, transformOrigin: '50% 100%', opacity: o}}>
-      <div style={{background: '#f7f9ff', color: '#0b1020', padding: '14px 30px', borderRadius: 40, fontFamily: 'Sora', fontWeight: 600, fontSize: loud ? 52 : 46, whiteSpace: 'pre', boxShadow: `0 8px 30px rgba(0,0,0,0.6), 0 0 0 4px ${TINT.ego}`}}>{s}</div>
+      <div style={{background: '#f7f9ff', color: '#0b1020', padding: '14px 30px', borderRadius: 40, fontFamily: 'var(--capf)', fontWeight: 'var(--capw)' as unknown as number, WebkitTextStroke: 'var(--stroke)', paintOrder: 'stroke fill', fontSize: loud ? 52 : 46, whiteSpace: 'pre', boxShadow: `0 8px 30px rgba(0,0,0,0.6), 0 0 0 4px ${TINT.ego}`}}>{s}</div>
       <div style={{position: 'absolute', left: '50%', bottom: -16, width: 0, height: 0, transform: 'translateX(-50%)', borderLeft: '14px solid transparent', borderRight: '14px solid transparent', borderTop: '18px solid #f7f9ff'}} />
     </div>
   );
@@ -200,7 +200,7 @@ const Labels: React.FC<{t: number; c: Cam}> = ({t, c}) => (
       if (o <= 0) return null;
       const col = TINT[(['', 'mot', 'laz', 'tal', 'obs', 'dis'] as const)[i] as 'mot'];
       return (
-        <div key={i} style={{position: 'absolute', left: x, top: y, transform: 'translate(-50%, -50%)', opacity: o * (1 - 0.5 * s.spent), fontFamily: 'Sora', fontWeight: 600, fontSize: 34, letterSpacing: '0.04em', color: col, textShadow: `0 2px 8px rgba(0,0,0,0.9), 0 0 18px ${col}66`}}>
+        <div key={i} style={{position: 'absolute', left: x, top: y, transform: 'translate(-50%, -50%)', opacity: o * (1 - 0.5 * s.spent), fontFamily: 'var(--tagf)', fontWeight: 700, textTransform: 'var(--tagt)' as React.CSSProperties['textTransform'], fontSize: 34, letterSpacing: '0.04em', color: col, textShadow: `0 2px 8px rgba(0,0,0,0.9), 0 0 18px ${col}66`}}>
           {['', 'Motivation', 'Laziness', 'Talent', 'Obsession', 'Discipline'][i]}
         </div>
       );
@@ -249,13 +249,31 @@ export const SG007Full: React.FC<{withAudio?: boolean; style?: string}> = ({with
   const flash = wins.reduce((m, w, i) => Math.max(m, (i === 1 ? 0.15 : 0.4) * hit(t, w, 9)), 0) + 0.7 * hit(t, K.slam, 7) + 0.25 * hit(t, K.slam + 0.36, 9);
   const ego = CAST[0](t);
   const red = 0.22 * clamp(ego.aura - 0.3) * (t < K.slam ? 1 : 0) + 0.15 * hit(t, K.w3, 3);
+  const blocks = sty.id === 'blocks';
+  const vars = {
+    ['--capf' as string]: blocks ? 'Nunito' : 'Sora',
+    ['--capw' as string]: blocks ? 900 : 600,
+    ['--stroke' as string]: blocks ? '3px #1a0e0a' : '0px transparent',
+    ['--tagf' as string]: blocks ? 'Barlow Condensed' : 'Sora',
+    ['--tagt' as string]: blocks ? 'uppercase' : 'none',
+  } as React.CSSProperties;
   return (
-    <AbsoluteFill style={{background: SG.bg.edge}}>
+    <AbsoluteFill style={{background: SG.bg.edge, ...vars}}>
+      <AbsoluteFill style={{filter: blocks ? 'contrast(1.1) saturate(1.14) brightness(1.03)' : undefined}}>
       <Stage look={sty.look} cam={c}>
         <StyCtx.Provider value={sty}>
           <World t={t} />
         </StyCtx.Provider>
       </Stage>
+      </AbsoluteFill>
+      {blocks ? (
+        <>
+          {/* grade: warm light in the middle, cool teal shadows at the edges, a soft top-down falloff */}
+          <AbsoluteFill style={{background: 'radial-gradient(ellipse 70% 55% at 50% 48%, rgba(255,170,90,0.22) 0%, rgba(255,170,90,0) 70%)', mixBlendMode: 'soft-light'}} />
+          <AbsoluteFill style={{background: 'radial-gradient(ellipse 90% 75% at 50% 50%, rgba(10,40,70,0) 50%, rgba(10,40,70,0.55) 100%)', mixBlendMode: 'multiply'}} />
+          <AbsoluteFill style={{background: 'linear-gradient(180deg, rgba(0,0,0,0.25) 0%, rgba(0,0,0,0) 25%, rgba(0,0,0,0) 70%, rgba(0,0,0,0.35) 100%)'}} />
+        </>
+      ) : null}
       {sty.fig === 'flat' || sty.fig === 'ink' || sty.fig === 'paper' ? <FlatFigs t={t} c={c} sty={sty} /> : null}
       <AbsoluteFill style={{background: 'radial-gradient(ellipse 80% 62% at 50% 50%, rgba(255,40,20,0) 45%, rgba(255,40,20,1) 100%)', opacity: red * (light ? 0.35 : 1), mixBlendMode: light ? 'multiply' : 'screen'}} />
       <Speed t={t} at={K.w3} colors={['#ff4a3a', '#ffffff']} />
