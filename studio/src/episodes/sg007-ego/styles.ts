@@ -41,7 +41,7 @@ export type Sty = {
   env?: Env;
   cap?: CSSProperties;
   /** round 3: a physically lit set with cartoon 3D characters */
-  real?: {env: 'hall' | 'pub' | 'garage' | 'gym' | 'pro'; colored: boolean; design?: 'cel2d' | 'classic' | 'bean' | 'rubber' | 'block' | 'ring'};
+  real?: {env: 'hall' | 'pub' | 'garage' | 'gym' | 'pro'; colored: boolean; neck?: number; design?: 'cel2d' | 'classic' | 'bean' | 'rubber' | 'block' | 'ring'};
 };
 
 const night = {...SG, bg: {center: '#111a30', edge: '#020308', glow: '#2c4a8a', glowAmt: 0.28}};
@@ -297,7 +297,9 @@ export const BLOCKS: Sty = {
   look: {...SG, bloom: {strength: 0.2, radius: 0.45, threshold: 0.96}, vignette: 0.42, grain: 0},
   cap: {fontFamily: 'Nunito', fontWeight: 900, letterSpacing: '0.005em', WebkitTextStroke: '3px #1a0e0a', paintOrder: 'stroke fill'},
 };
-export const STY = Object.fromEntries([...STYLES, ...WORLDS, ...REALS, ...CARTOONS, BLOCKS].map((s) => [s.id, s])) as Record<string, Sty>;
+const neckV = (id: string, neck: number): Sty => ({...BLOCKS, id, real: {env: 'pro', colored: true, neck}});
+export const NECKS = [neckV('blocks-n1', 0.23), neckV('blocks-n2', 0.255), neckV('blocks-n3', 0.28)];
+export const STY = Object.fromEntries([...STYLES, ...WORLDS, ...REALS, ...CARTOONS, BLOCKS, ...NECKS].map((s) => [s.id, s])) as Record<string, Sty>;
 
 export const StyCtx = createContext<Sty>(STY.porcelain);
 export const useSty = () => useContext(StyCtx);

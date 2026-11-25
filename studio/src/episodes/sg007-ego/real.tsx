@@ -485,7 +485,7 @@ const Gym: React.FC = () => {
 const EXPO: Record<RealEnv, [number, number]> = {hall: [1.0, 0.25], pub: [1.05, 0.15], garage: [1.1, 0.1], gym: [0.95, 0.5], pro: [1.05, 0.22]};
 const PAL = ['#ff5a4a', '#ffa83a', '#5fd8a0', '#ffd84a', '#a77cff', '#4ab8ff'];
 
-export const RealScene: React.FC<{t: number; env: RealEnv; colored: boolean; design?: Design}> = ({t, env, colored, design}) => {
+export const RealScene: React.FC<{t: number; env: RealEnv; colored: boolean; design?: Design; neck?: number}> = ({t, env, colored, design, neck}) => {
   const st = CAST.map((f) => f(t));
   return (
     <>
@@ -495,7 +495,7 @@ export const RealScene: React.FC<{t: number; env: RealEnv; colored: boolean; des
         <ArmTable key={i} i={i} pad={['#e8a020', '#2aa070', '#e8c020', '#7a4ad8', '#2a7ad8'][i]} />
       ))}
       {env === 'pro'
-        ? st.map((s, i) => <BlockMan key={i} j={solveR(s.rig)} idx={i} spent={s.spent} energy={s.energy} noArm={s.noArm} crown={i === 0 && t < 30.1} light={TINTS[i]} />)
+        ? st.map((s, i) => <BlockMan key={i} j={solveR(s.rig)} idx={i} spent={s.spent} energy={s.energy} noArm={s.noArm} crown={i === 0 && t < 30.1} light={TINTS[i]} neck={neck} />)
         : design
         ? st.map((s, i) => <CartoonMan key={i} j={solveR(s.rig)} design={design} idx={i} spent={s.spent} noArm={s.noArm} crown={i === 0 && t < 30.1} />)
         : st.map((s, i) => (
