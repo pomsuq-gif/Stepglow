@@ -29,5 +29,5 @@ for (const [si, style] of styles.entries()) {
   cols.push(col);
 }
 const sheet = path.join(outDir, 'styles-sheet.jpg');
-execFileSync('ffmpeg', ['-v', 'error', '-y', ...cols.flatMap((f) => ['-i', f]), '-filter_complex', `${cols.map((_, i) => `[${i}]`).join('')}hstack=inputs=${cols.length}`, '-q:v', '3', sheet]);
+execFileSync('ffmpeg', ['-v', 'error', '-y', ...cols.flatMap((f) => ['-i', f]), '-filter_complex', cols.length > 1 ? `${cols.map((_, i) => `[${i}]`).join('')}hstack=inputs=${cols.length}` : 'null', '-q:v', '3', sheet]);
 console.log('sheet ->', sheet);

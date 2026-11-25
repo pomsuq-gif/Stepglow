@@ -13,6 +13,7 @@ import {clasp, PEG, solveR, TOP, TY} from './rig';
 import {CLAY, useSty} from './styles';
 import {ToonFig} from './toon';
 import {EnvWorld} from './envs';
+import {RealScene} from './real';
 
 const G = 9.8;
 const q = (x: number, n = 16) => Math.round(clamp(x) * n) / n;
@@ -481,6 +482,11 @@ const fightAt = (t: number) => [
 ];
 
 export const World: React.FC<{t: number}> = ({t}) => {
+  const sty = useSty();
+  return sty.real ? <RealScene t={t} env={sty.real.env} colored={sty.real.colored} /> : <WorldOld t={t} />;
+};
+
+const WorldOld: React.FC<{t: number}> = ({t}) => {
   const look = useLook();
   const sty = useSty();
   const L = lights(t);

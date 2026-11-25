@@ -40,6 +40,8 @@ export type Sty = {
   /** the world around the tables, and the caption box */
   env?: Env;
   cap?: CSSProperties;
+  /** round 3: a physically lit set with cartoon 3D characters */
+  real?: {env: 'hall' | 'pub' | 'garage' | 'gym'; colored: boolean};
 };
 
 const night = {...SG, bg: {center: '#111a30', edge: '#020308', glow: '#2c4a8a', glowAmt: 0.28}};
@@ -262,7 +264,24 @@ export const WORLDS: Sty[] = [
   },
 ];
 
-export const STY = Object.fromEntries([...STYLES, ...WORLDS].map((s) => [s.id, s])) as Record<string, Sty>;
+const realBase = (id: string, name: string, env: 'hall' | 'pub' | 'garage' | 'gym', colored: boolean, text: string, textShadow: string): Sty => ({
+  ...STYLES[0],
+  id,
+  name,
+  fig: 'toon',
+  real: {env, colored},
+  look: {...SG, bloom: {strength: 0.18, radius: 0.4, threshold: 0.92}, vignette: 0.3, grain: 0},
+  text,
+  textShadow,
+});
+const SH = '0 3px 0 #000, 0 0 3px #000, 0 6px 22px rgba(0,0,0,0.9)';
+export const REALS: Sty[] = [
+  realBase('r-hall', 'Tournament Hall', 'hall', false, '#ffffff', SH),
+  realBase('r-pub', 'Old Pub', 'pub', true, '#fff2e0', SH),
+  realBase('r-garage', 'Basement Garage', 'garage', false, '#ffffff', SH),
+  realBase('r-gym', 'Sunny Gym', 'gym', true, '#ffffff', SH),
+];
+export const STY = Object.fromEntries([...STYLES, ...WORLDS, ...REALS].map((s) => [s.id, s])) as Record<string, Sty>;
 
 export const StyCtx = createContext<Sty>(STY.porcelain);
 export const useSty = () => useContext(StyCtx);
