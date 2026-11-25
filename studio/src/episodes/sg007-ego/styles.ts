@@ -41,7 +41,7 @@ export type Sty = {
   env?: Env;
   cap?: CSSProperties;
   /** round 3: a physically lit set with cartoon 3D characters */
-  real?: {env: 'hall' | 'pub' | 'garage' | 'gym'; colored: boolean};
+  real?: {env: 'hall' | 'pub' | 'garage' | 'gym'; colored: boolean; design?: 'cel2d' | 'classic' | 'bean' | 'rubber' | 'block' | 'ring'};
 };
 
 const night = {...SG, bg: {center: '#111a30', edge: '#020308', glow: '#2c4a8a', glowAmt: 0.28}};
@@ -281,7 +281,16 @@ export const REALS: Sty[] = [
   realBase('r-garage', 'Basement Garage', 'garage', false, '#ffffff', SH),
   realBase('r-gym', 'Sunny Gym', 'gym', true, '#ffffff', SH),
 ];
-export const STY = Object.fromEntries([...STYLES, ...WORLDS, ...REALS].map((s) => [s.id, s])) as Record<string, Sty>;
+const toonIn = (id: string, name: string, design: 'cel2d' | 'classic' | 'bean' | 'rubber' | 'block' | 'ring'): Sty => ({...realBase(id, name, 'hall', false, '#ffffff', SH), real: {env: 'hall', colored: false, design}});
+export const CARTOONS: Sty[] = [
+  toonIn('c-cel2d', '3D as 2D (flat + ink)', 'cel2d'),
+  toonIn('c-classic', 'Classic thin stickman', 'classic'),
+  toonIn('c-bean', 'Gummy beans', 'bean'),
+  toonIn('c-rubber', 'Rubber hose (1930s)', 'rubber'),
+  toonIn('c-block', 'Toy blocks', 'block'),
+  toonIn('c-ring', 'Colour line', 'ring'),
+];
+export const STY = Object.fromEntries([...STYLES, ...WORLDS, ...REALS, ...CARTOONS].map((s) => [s.id, s])) as Record<string, Sty>;
 
 export const StyCtx = createContext<Sty>(STY.porcelain);
 export const useSty = () => useContext(StyCtx);

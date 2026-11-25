@@ -483,7 +483,7 @@ const fightAt = (t: number) => [
 
 export const World: React.FC<{t: number}> = ({t}) => {
   const sty = useSty();
-  return sty.real ? <RealScene t={t} env={sty.real.env} colored={sty.real.colored} /> : <WorldOld t={t} />;
+  return sty.real ? <RealScene t={t} env={sty.real.env} colored={sty.real.colored} design={sty.real.design} /> : <WorldOld t={t} />;
 };
 
 const WorldOld: React.FC<{t: number}> = ({t}) => {

@@ -8,6 +8,7 @@ import {mixHex} from '../nc001-work-smart/world';
 import {add, HB, K3, mul, W3, type J3} from '../sg003-same-bar/rig3';
 import {CAST, TINTS, tw} from './plan';
 import {PEG, solveR, TOP, TY} from './rig';
+import {CartoonMan, type Design} from './cartoon';
 
 /**
  * SG007 "real" looks: physically lit 3D sets (PBR materials, spot lights with soft shadows, an environment map for
@@ -483,7 +484,7 @@ const Gym: React.FC = () => {
 const EXPO: Record<RealEnv, [number, number]> = {hall: [1.0, 0.25], pub: [1.05, 0.15], garage: [1.1, 0.1], gym: [0.95, 0.5]};
 const PAL = ['#ff5a4a', '#ffa83a', '#5fd8a0', '#ffd84a', '#a77cff', '#4ab8ff'];
 
-export const RealScene: React.FC<{t: number; env: RealEnv; colored: boolean}> = ({t, env, colored}) => {
+export const RealScene: React.FC<{t: number; env: RealEnv; colored: boolean; design?: Design}> = ({t, env, colored, design}) => {
   const st = CAST.map((f) => f(t));
   return (
     <>
@@ -492,7 +493,9 @@ export const RealScene: React.FC<{t: number; env: RealEnv; colored: boolean}> = 
       {[0, 1, 2, 3, 4].map((i) => (
         <ArmTable key={i} i={i} pad={['#e8a020', '#2aa070', '#e8c020', '#7a4ad8', '#2a7ad8'][i]} />
       ))}
-      {st.map((s, i) => (
+      {design
+        ? st.map((s, i) => <CartoonMan key={i} j={solveR(s.rig)} design={design} idx={i} spent={s.spent} noArm={s.noArm} crown={i === 0 && t < 30.1} />)
+        : st.map((s, i) => (
         <CartoonFig key={i} j={solveR(s.rig)} color={colored ? PAL[i] : '#f4f6fb'} tint={TINTS[i]} idx={i} spent={s.spent} aura={s.aura} noArm={s.noArm} crown={i === 0 && t < 30.1} t={t} />
       ))}
     </>
