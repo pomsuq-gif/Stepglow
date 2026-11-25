@@ -16,7 +16,7 @@ export const R_EL = HB.ar[1];
 export const R_HD = HB.ar[2];
 export const EY = TY + R_EL;
 export const EX = 0.125;
-export const HX = 0.04;
+export const HX = 0.066;
 /** the fist's height above the elbow line when the forearms stand straight up */
 export const FH = Math.sqrt(HB.fore * HB.fore - (EX - HX) ** 2);
 /** a pinned hand: the fist rests on the table top */
@@ -65,7 +65,7 @@ export const grip = (o: GripOpts): Rig => {
   const st = o.strain ?? 0;
   const tt = o.t ?? 0;
   const sl = o.slouch ?? 0;
-  const jit: V3 = [Math.sin(tt * 47 + sd) * 0.006 * st, Math.sin(tt * 39 + 2 * sd) * 0.008 * st, Math.sin(tt * 53 + 3 * sd) * 0.006 * st];
+  const jit: V3 = [Math.sin(tt * 4.1 + sd) * 0.006 * st, Math.sin(tt * 3.3 + 2 * sd) * 0.008 * st, Math.sin(tt * 4.7 + 3 * sd) * 0.006 * st];
   const E: V3 = [sd * EX, EY, 0];
   const C = clasp(phi);
   const H: V3 = [sd * HX, C[1], C[2]];

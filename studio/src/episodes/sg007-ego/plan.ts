@@ -57,32 +57,32 @@ export const phiAt = (t: number, m: number): number => {
   if (m === 1) {
     // Motivation bursts in, pushes Ego a little, burns out; Ego slams on the beat
     const burst = -0.32 * ss(t, 1.75, 2.25) * (1 - ss(t, 2.6, 3.5));
-    const v = burst + 0.04 * wob(t, 9) * (1 - ss(t, 3.2, 3.8));
+    const v = burst + 0.04 * wob(t, 2.6) * (1 - ss(t, 3.2, 3.8));
     return t < K.w1 ? v : slam(t, K.w1, v, PIN);
   }
   if (m === 2) {
     // Laziness barely holds: the hands drift his way, then just flop
-    const v = 0.55 * ss(t, 6.9, 8.2) ** 1.4 + 0.02 * wob(t, 3);
+    const v = 0.55 * ss(t, 6.9, 8.2) ** 1.4;
     return t < K.w2 ? v : slam(t, K.w2, v, PIN, 0.22);
   }
   if (m === 3) {
     // Talent is a real fight: even, then Talent takes him nearly all the way down; Ego comes back in one blow
-    const even = 0.1 * wob(t, 6) + 0.05 * Math.sin(t * 23);
+    const even = 0.1 * wob(t, 2.4);
     const down = -1.08 * ss(t, 12.15, 13.2) - 0.1 * ss(t, 13.2, 14.6) + 0.06 * ss(t, 14.6, 15.05);
-    const shakeIt = 0.035 * Math.sin(t * 41) * ss(t, 12.2, 13);
+    const shakeIt = 0;
     const v = even * (1 - ss(t, 12.2, 12.8)) + down + shakeIt;
     return t < K.w3 ? v : slam(t, K.w3, v, PIN, 0.11);
   }
   if (m === 4) {
     // Obsession grinds; never stops; Ego won't lose; the arm snaps
-    const grind = 0.22 * wob(t, 7.3, 1) + 0.05 * Math.sin(t * 31);
+    const grind = 0.2 * wob(t, 2.8, 1);
     const push = -0.78 * ss(t, K.never - 0.2, K.never + 0.9) * (1 - ss(t, K.wont - 0.1, K.wont + 0.5));
     const back = 0.95 * ss(t, K.wont - 0.05, K.broke - 0.05);
-    const v = grind * (1 - 0.6 * ss(t, K.never - 0.3, K.never)) + push + back + 0.04 * Math.sin(t * 47) * ss(t, K.wont, K.broke);
+    const v = grind * (1 - 0.6 * ss(t, K.never - 0.3, K.never)) + push + back;
     return t < K.broke ? v : slam(t, K.broke, v, PIN, 0.09);
   }
   // Discipline does not move at all (Ego shakes against a wall), then pins him in one move
-  const v = 0.008 * Math.sin(t * 50) * ss(t, K.sure, K.sure + 0.4);
+  const v = 0;
   return t < K.slam ? v : slam(t, K.slam, v, -PIN, 0.12);
 };
 

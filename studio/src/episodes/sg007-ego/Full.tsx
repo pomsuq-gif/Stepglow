@@ -70,8 +70,8 @@ export const cam = (t: number): Cam => {
   const punch = wins.reduce((m, w) => m + 0.07 * hit(t, w, 6), 0) + 0.12 * hit(t, K.slam, 5) + 0.08 * hit(t, K.slam + 0.36, 6);
   c.viewH *= 1 - punch;
   c.roll += 3 * hit(t, K.w3, 4) - 4 * hit(t, K.slam, 4);
-  const tremble = 0.012 * ss(t, 12.3, 13) * (1 - ss(t, K.w3, K.w3 + 0.1)) + 0.01 * ss(t, 18.6, 19) * (1 - ss(t, K.broke, K.broke + 0.2)) + 0.008 * ss(t, K.sure, K.seen) * (1 - ss(t, K.slam, K.slam + 0.1));
-  const [sx, sy] = shake(t, tremble + wins.reduce((m, w) => m + 0.03 * hit(t, w, 8), 0) + 0.06 * hit(t, K.slam, 6) + 0.05 * hit(t, K.slam + 0.36, 7));
+  const tremble = 0;
+  const [sx, sy] = shake(t, tremble + wins.reduce((m, w) => m + 0.012 * hit(t, w, 9), 0) + 0.025 * hit(t, K.slam, 7) + 0.02 * hit(t, K.slam + 0.36, 8));
   return {...c, cx: c.cx + sx, cy: c.cy + sy};
 };
 
@@ -184,8 +184,8 @@ const Bubble: React.FC<{t: number; c: Cam}> = ({t, c}) => {
 /** names over the heads of the opponents while they are in play */
 const LABEL_ON: [number, number, number][] = [
   [1, 0.2, 5.6],
-  [2, 5.8, 10.0],
-  [3, 10.0, 16.1],
+  [2, K.t2, 10.0],
+  [3, K.t3, 16.1],
   [4, 16.72, 25.6],
   [5, K.more, 31.6],
 ];

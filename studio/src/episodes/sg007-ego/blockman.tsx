@@ -59,6 +59,14 @@ const Cube: React.FC<{p: V3; s: V3; basis: [V3, V3, V3]; m: THREE.Material; line
   );
 };
 
+/** gloves square to the table axis (world x), so two clasped fists line up */
+const gloveBasis = (y: V3): [V3, V3, V3] => {
+  let x: V3 = sub([1, 0, 0], mul(y, y[0]));
+  if (Math.hypot(...x) < 0.2) x = sub([0, 0, 1], mul(y, y[2]));
+  x = norm(x);
+  return [x, y, cross(x, y)];
+};
+
 /** each character's toy colour */
 export const BLOCK = ['#ef4b3f', '#f59a2e', '#3fc495', '#f2c531', '#9a6cf0', '#3ea2f0'];
 
@@ -95,7 +103,7 @@ export const BlockMan: React.FC<{j: J3; idx: number; spent: number; energy: numb
         <React.Fragment key={`a${i}`}>
           <Blk a={s} b={el} w={0.095} d={0.095} side={side} m={mLimb} ext={0.05} />
           <Blk a={el} b={h} w={0.085} d={0.085} side={side} m={mLimb} ext={0.03} />
-          <Cube p={h} s={[0.12, 0.12, 0.12]} basis={[side, norm(sub(h, el)), cross(side, norm(sub(h, el)))].map((v) => norm(v)) as [V3, V3, V3]} m={mGlove} />
+          <Cube p={h} s={[0.12, 0.12, 0.12]} basis={gloveBasis(norm(sub(h, el)))} m={mGlove} />
         </React.Fragment>
       ))}
       {legs.map(([h, k, f], i) => (
