@@ -285,22 +285,18 @@ const ArmTable: React.FC<{i: number; pad: string}> = ({i, pad}) => {
   const chrome = std('#d8dde6', 0.15, 1);
   const X = (x: number, yy: number, z: number): V3 => [c[0] + x * s, yy, c[2] + z * s];
   const legs: [number, number][] = [
-    [-0.3, -0.3],
-    [0.3, -0.3],
-    [-0.3, 0.3],
-    [0.3, 0.3],
+    [-0.28, -0.28],
+    [0.28, -0.28],
+    [-0.28, 0.28],
+    [0.28, 0.28],
   ];
   return (
     <>
       {legs.map(([x, z], k) => (
         <Bx key={k} p={X(x, y / 2 - 0.03, z)} s={[0.05, y - 0.06, 0.05]} m={frame} />
       ))}
-      {/* a rail round the legs near the floor */}
-      {[-1, 1].map((k) => (
-        <React.Fragment key={k}>
-          <Bx p={X(0, 0.15, k * 0.3)} s={[0.6 * s + 0.05, 0.035, 0.035]} m={frame} />
-          <Bx p={X(k * 0.3, 0.15, 0)} s={[0.035, 0.035, 0.6 * s + 0.05]} m={frame} />
-        </React.Fragment>
+      {legs.map(([x, z], k) => (
+        <Bx key={`f${k}`} p={X(x, 0.012, z)} s={[0.09, 0.024, 0.09]} m={frame} />
       ))}
       <Bx p={X(0, y - 0.035, 0)} s={[TOP.x * 2 * s, 0.07, TOP.z * 2 * s]} m={vinyl} />
       {/* elbow pads (Ego red, the opponent in his colour) and the two hand pads */}
@@ -493,6 +489,17 @@ const Gym: React.FC = () => {
 const EXPO: Record<RealEnv, [number, number]> = {hall: [1.0, 0.25], pub: [1.05, 0.15], garage: [1.1, 0.1], gym: [0.95, 0.5], pro: [1.05, 0.22]};
 const PAL = ['#ff5a4a', '#ffa83a', '#5fd8a0', '#ffd84a', '#a77cff', '#4ab8ff'];
 
+/** the other right fist, if this character's right fist is clasped with it (world) */
+const gripOther = (st: {rig: {hand: [V3, V3]}; noArm?: boolean}[], i: number): V3 | null => {
+  const h = st[i].rig.hand[0];
+  for (let k = 0; k < st.length; k++) {
+    if (k === i || st[k].noArm) continue;
+    const o = st[k].rig.hand[0];
+    if (Math.hypot(o[0] - h[0], o[1] - h[1], o[2] - h[2]) < 0.16) return W3(o, [0, 0, 0], K3);
+  }
+  return null;
+};
+
 /** each opponent comes on at his turn, as in the reference (Obsession and Discipline with their spots in the dark) */
 const APPEAR = [0, 0, 0, 0, 16.72, KT.more];
 
@@ -508,7 +515,7 @@ export const RealScene: React.FC<{t: number; env: RealEnv; colored: boolean; des
       {env === 'pro' ? <BlockFx t={t} /> : null}
       {env === 'pro' ? <ProFx t={t} st={st} /> : null}
       {env === 'pro'
-        ? st.map((s, i) => t < APPEAR[i] ? null : <BlockMan key={i} j={solveR(s.rig)} idx={i} spent={s.spent} energy={s.energy} noArm={s.noArm} crown={i === 0 && t < 30.1} light={TINTS[i]} neck={neck} />)
+        ? st.map((s, i) => t < APPEAR[i] ? null : <BlockMan key={i} other={gripOther(st, i)} j={solveR(s.rig)} idx={i} spent={s.spent} energy={s.energy} noArm={s.noArm} crown={i === 0 && t < 30.1} light={TINTS[i]} neck={neck} />)
         : design
         ? st.map((s, i) => <CartoonMan key={i} j={solveR(s.rig)} design={design} idx={i} spent={s.spent} noArm={s.noArm} crown={i === 0 && t < 30.1} />)
         : st.map((s, i) => (

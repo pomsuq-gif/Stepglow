@@ -70,7 +70,7 @@ const gloveBasis = (y: V3): [V3, V3, V3] => {
 /** each character's toy colour */
 export const BLOCK = ['#ef4b3f', '#f59a2e', '#3fc495', '#f2c531', '#9a6cf0', '#3ea2f0'];
 
-export const BlockMan: React.FC<{j: J3; idx: number; spent: number; energy: number; noArm?: boolean; crown: boolean; light: string; neck?: number}> = ({j, idx, spent, energy, noArm, crown, light, neck = 0.245}) => {
+export const BlockMan: React.FC<{j: J3; idx: number; spent: number; energy: number; noArm?: boolean; crown: boolean; light: string; neck?: number; other?: V3 | null}> = ({j, idx, spent, energy, noArm, crown, light, neck = 0.245, other = null}) => {
   const w = (p: V3) => W3(p, [0, 0, 0], K3);
   const g = (c: string) => mixHex(c, '#7d8494', spent * 0.7);
   const base = g(BLOCK[idx]);
@@ -104,6 +104,14 @@ export const BlockMan: React.FC<{j: J3; idx: number; spent: number; energy: numb
           <Blk a={s} b={el} w={0.095} d={0.095} side={side} m={mLimb} ext={0.05} />
           <Blk a={el} b={h} w={0.085} d={0.085} side={side} m={mLimb} ext={0.03} />
           <Cube p={h} s={[0.12, 0.12, 0.12]} basis={gloveBasis(norm(sub(h, el)))} m={mGlove} />
+          {/* gripping: the thumb wraps over the other fist */}
+          {other && !noArm && i === 0
+            ? (() => {
+                const fy = norm(sub(h, el));
+                const to = norm(sub(other, h));
+                return <Cube p={add(add(h, mul(fy, 0.055)), mul(to, 0.055))} s={[0.06, 0.04, 0.07]} basis={gloveBasis(fy)} m={mGlove} />;
+              })()
+            : null}
         </React.Fragment>
       ))}
       {legs.map(([h, k, f], i) => (

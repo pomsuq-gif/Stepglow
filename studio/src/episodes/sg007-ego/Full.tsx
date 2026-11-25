@@ -56,7 +56,7 @@ const rawFollow = (t: number): [V3, number] => {
   const e = egoPel(t);
   let w = 0;
   let c: V3 = e;
-  let vh = 5.2;
+  let vh = 5.6;
   for (const [a, b, i] of FIGHTS) {
     const k = ss(t, a - 0.5, a + 0.3) * (1 - ss(t, b - 0.2, b + 0.6));
     if (k > w) {
@@ -66,11 +66,11 @@ const rawFollow = (t: number): [V3, number] => {
       c = [lerp(tc[0], e[0], 0.42), 0, lerp(tc[2], e[2], 0.42)];
       // push in while the fight lasts; hard fights get closer
       const hard = i >= 2 ? 1 : 0.5;
-      vh = 4.8 - (0.6 + 0.5 * hard) * ss(t, a, b - 0.6);
+      vh = 5.2 - (0.4 + 0.4 * hard) * ss(t, a, b - 0.6);
     }
   }
   const f: V3 = [lerp(e[0], c[0], w), 0, lerp(e[2], c[2], w)];
-  return [f, lerp(5.2, vh, w)];
+  return [f, lerp(5.6, vh, w)];
 };
 const follow = (t: number): C => {
   // a soft lag: the average of the last 0.6 s
@@ -88,7 +88,7 @@ const follow = (t: number): C => {
   }
   // pull back a little for "Who's next?!" (arms up)
   const up = ss(t, K.w3 + 0.1, K.w3 + 0.5) * (1 - ss(t, K.dark - 0.1, K.dark));
-  return {viewH: sv / sw + 1.5 * up, cx: sx / sw + 0.05 - 0.35 * up, cy: 1.02 + 0.5 * up, cz: sz / sw + 0.1, pitch: 13 + 1.5 * Math.sin(t * 0.21), yaw: -20 + 3 * Math.sin(t * 0.13), fov: 30, roll: 0};
+  return {viewH: sv / sw + 1.2 * up, cx: sx / sw + 0.05 - 0.3 * up, cy: 1.05 + 0.35 * up, cz: sz / sw + 0.05, pitch: 9 + 1 * Math.sin(t * 0.21), yaw: -16 + 2 * Math.sin(t * 0.13), fov: 30, roll: 0};
 };
 
 const SHOT_END = SECONDS;

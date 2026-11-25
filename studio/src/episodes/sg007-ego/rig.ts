@@ -16,9 +16,11 @@ export const R_EL = HB.ar[1];
 export const R_HD = HB.ar[2];
 export const EY = TY + R_EL;
 export const EX = 0.125;
-export const HX = 0.066;
+export const HX = 0.05;
+/** the fists sit a little apart front-to-back, so they interlock */
+export const HZ = 0.03;
 /** the fist's height above the elbow line when the forearms stand straight up */
-export const FH = Math.sqrt(HB.fore * HB.fore - (EX - HX) ** 2);
+export const FH = Math.sqrt(HB.fore * HB.fore - (EX - HX) ** 2 - HZ * HZ);
 /** a pinned hand: the fist rests on the table top */
 export const PIN = Math.acos(clamp((TY + R_HD + 0.005 - EY) / FH, -1, 1));
 /** table top half sizes (x along the axis, z across) and the grip pegs */
@@ -68,7 +70,7 @@ export const grip = (o: GripOpts): Rig => {
   const jit: V3 = [Math.sin(tt * 4.1 + sd) * 0.006 * st, Math.sin(tt * 3.3 + 2 * sd) * 0.008 * st, Math.sin(tt * 4.7 + 3 * sd) * 0.006 * st];
   const E: V3 = [sd * EX, EY, 0];
   const C = clasp(phi);
-  const H: V3 = [sd * HX, C[1], C[2]];
+  const H: V3 = [sd * HX, C[1], C[2] - sd * HZ];
   // upper arm: back toward the body and up; both shoulders follow the clasp across, the loser's drops
   const losing = clamp(-sd * Math.sin(phi) * -1);
   const u = norm([sd * (0.62 + 0.08 * sl), 0.78 - 0.18 * losing - 0.1 * sl, -0.42 * Math.sin(phi)]);
@@ -82,7 +84,7 @@ export const grip = (o: GripOpts): Rig => {
   const pel = sub(shc, mul(up, SHC));
   // the feet: the right one forward by the pedestal, the left one back and out
   const sp = o.stance ?? 1;
-  const f0: V3 = [sd * 0.36, ANK, -sd * 0.04];
+  const f0: V3 = [sd * 0.44, ANK, -sd * 0.06];
   const f1: V3 = [sd * (0.36 + 0.42 * sp), ANK, sd * 0.3 * sp];
   // the free (left) hand: on the peg at the table's corner, or hanging
   const pg: V3 = [sd * PEG[0], PEG[1], sd * PEG[2]];

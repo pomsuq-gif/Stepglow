@@ -16,10 +16,10 @@ export const TINTS = [TINT.ego, TINT.mot, TINT.laz, TINT.tal, TINT.obs, TINT.dis
 /** the tables (local): a row going right and a little back, as in the reference (the next one is off frame until the camera follows Ego there); the last one stands apart, with room for the flight into the board */
 export const TP: V3[] = [
   [0, 0, 0],
-  [2.6, 0, -0.8],
-  [5.2, 0, -1.6],
-  [7.8, 0, -2.4],
-  [12.2, 0, -2.6],
+  [3.3, 0, -0.8],
+  [6.6, 0, -1.6],
+  [9.9, 0, -2.4],
+  [14.3, 0, -2.6],
 ];
 export const tw = (i: number): V3 => [TP[i][0] * K3, 0, TP[i][2] * K3];
 /** the arena board Ego flies into: a wall along z at this x (local), beside the last table */
@@ -219,7 +219,7 @@ const og = (m: number, t: number, o: Partial<Parameters<typeof grip>[0]> = {}) =
 const thrown = (t: number, t0: number, gr: Rig, i: number, down: Rig, back = 0.55) =>
   rigAt(t, [
     [t0, gr],
-    [t0 + 0.16, at(add3(oppSpot(i), [0.3, 0.05, -0.15]), -P2 + 0.5, {lean: -20, arms: 'up'})],
+    [t0 + 0.16, at(add3(oppSpot(i), [0.25, 0.05, -0.4]), -P2 + 0.5, {lean: -20, arms: 'up'})],
     [t0 + back, down, easeOut],
   ]);
 
@@ -230,7 +230,7 @@ const motState = (t: number): State => {
   if (t < 1.32) rig = ready(i, t, 1);
   else if (t < GRIP.m1[0]) rig = rigAt(t, [[1.32, ready(i, t, 1)], [GRIP.m1[0], og(m, GRIP.m1[0])]]);
   else if (t < K.w1 + 0.18) rig = og(m, t, {strain: 0.6 * (1 - ss(t, 2.6, 3.4)), lean: 28 - 6 * ss(t, 2.6, 3.6), slouch: 0.4 * ss(t, 2.8, 3.8)});
-  else rig = thrown(t, K.w1 + 0.18, og(m, K.w1 + 0.18, {slouch: 0.4}), i, place(lie({face: 'down', arms: 'push', knee: 0.6}), add3(TP[i], [1.3, 0, -0.55]), P2 + 0.25), 0.5);
+  else rig = thrown(t, K.w1 + 0.18, og(m, K.w1 + 0.18, {slouch: 0.4}), i, place(lie({face: 'down', arms: 'push', knee: 0.6}), add3(TP[i], [1.05, 0, -1.1]), Math.PI - 0.5), 0.5);
   const s = S0(rig, TINT.mot, 1.5 - 1.3 * ss(t, 2.4, 3.7));
   s.aura = 0.55 * ss(t, 1.65, 1.95) * (1 - ss(t, 2.4, 3.3));
   s.spent = ss(t, K.w1 + 0.1, K.w1 + 0.8);
@@ -250,8 +250,8 @@ const lazState = (t: number): State => {
   else
     rig = rigAt(t, [
       [K.w2 + 0.25, og(m, K.w2 + 0.25, {slouch: 1, peg: 0, nod: 0.6})],
-      [K.w2 + 0.55, at(add3(oppSpot(i), [0.15, 0, -0.2]), -P2, {crouch: 0.25, lean: 15})],
-      [K.w2 + 1.0, place(lie({face: 'up', arms: 'pillow', knee: 0.7}), add3(TP[i], [1.15, 0, -0.75]), P2 + 0.15)],
+      [K.w2 + 0.55, at(add3(oppSpot(i), [0.15, 0, -0.35]), -P2, {crouch: 0.25, lean: 15})],
+      [K.w2 + 1.0, place(lie({face: 'up', arms: 'pillow', knee: 0.7}), add3(TP[i], [1.0, 0, -1.05]), Math.PI - 0.4)],
     ]);
   const s = S0(rig, TINT.laz, 0.35 + 0.1 * Math.sin(t * 2));
   s.spent = 0.25 * ss(t, K.w2, K.w2 + 0.6);
@@ -267,7 +267,7 @@ const talState = (t: number): State => {
   else if (t < K.w3 + 0.16) {
     const win = ss(t, 12.2, 13.2);
     rig = og(m, t, {strain: 0.5 + 0.3 * win, lean: 30 + 4 * win});
-  } else rig = thrown(t, K.w3 + 0.16, og(m, K.w3 + 0.16, {strain: 1}), i, place(lie({face: 'up', arms: 'out', knee: 0.3}), add3(TP[i], [1.5, 0, -0.75]), P2 - 0.2), 0.6);
+  } else rig = thrown(t, K.w3 + 0.16, og(m, K.w3 + 0.16, {strain: 1}), i, place(lie({face: 'up', arms: 'out', knee: 0.3}), add3(TP[i], [1.15, 0, -1.15]), Math.PI - 0.6), 0.6);
   const s = S0(rig, TINT.tal, 1.1);
   s.aura = 0.35 * ss(t, 12.2, 13) * (1 - ss(t, K.w3, K.w3 + 0.2));
   s.spent = ss(t, K.w3 + 0.2, K.w3 + 0.9);
