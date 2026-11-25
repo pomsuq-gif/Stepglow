@@ -7,7 +7,7 @@ import {mixHex} from '../nc001-work-smart/world';
 import {add, HB, K3, Man, W3, type Look3} from '../sg003-same-bar/rig3';
 import {BurstFx, Crown, GOLD, Puff, redHot, Ring, spentMat, type Burst} from '../sg005-top/World';
 import {hit, hits, beat} from './grid';
-import {CAST, D, groundAt, N, NARROW, NO, PL, R, solveC, SR, STAIR_W, T, TINT, TOP_Y, treadY, treadZ, XS, type State} from './plan';
+import {CAST, D, EGO_WAVE, groundAt, N, NARROW, NO, PL, R, solveC, SR, STAIR_W, T, TINT, TOP_Y, treadY, treadZ, XS, type State} from './plan';
 
 const B = beat;
 const q = (x: number, n = 16) => Math.round(clamp(x) * n) / n;
@@ -189,7 +189,9 @@ const CROWD = Array.from({length: 46}, (_, i) => {
     seed: i,
   };
 });
-const Crowd: React.FC<{t: number}> = ({t}) => (
+const Crowd: React.FC<{t: number}> = ({t}) => {
+  const frenzy = ss(t, EGO_WAVE[0], EGO_WAVE[0] + 0.4) * (1 - ss(t, EGO_WAVE[1], EGO_WAVE[1] + 0.8));
+  return (
   <>
     {CROWD.map((c, i) => {
       const gone = ss(t, c.leave, c.leave + 0.35);
@@ -199,7 +201,8 @@ const Crowd: React.FC<{t: number}> = ({t}) => (
       const p: V3 = [c.x, -0.45 - 0.6 * gone, c.z];
       const head: V3 = add(p, [0, 1.3 * s + bob, 0]);
       const ph: V3 = add(p, [0.12 * s, 1.42 * s + bob, 0.2]);
-      const flash = c.phone ? hit(t, Math.floor((t + rnd(i) * 3) / (1.9 + rnd(i + 9) * 2.2)) * (1.9 + rnd(i + 9) * 2.2) - rnd(i) * 3, 9) : 0;
+      const per = (1.9 + rnd(i + 9) * 2.2) * (1 - 0.7 * frenzy);
+      const flash = c.phone ? hit(t, Math.floor((t + rnd(i) * 3) / per) * per - rnd(i) * 3, 9) : 0;
       return (
         <React.Fragment key={i}>
           <Limb a={add(p, [0, 0.35, 0])} b={add(p, [0, 1.02 * s, 0])} r0={0.15 * s} r1={0.24 * s} m={SHADOW} y0={0} y1={1.6} />
@@ -216,6 +219,7 @@ const Crowd: React.FC<{t: number}> = ({t}) => (
     })}
   </>
 );
+};
 
 /* ───────────── stones ───────────── */
 
@@ -331,6 +335,54 @@ const Lamps: React.FC<{t: number; storm: number; cz: number}> = ({t, storm, cz})
         </React.Fragment>
       );
     })}
+  </>
+);
+
+/** the night sky: stars on a far dome (dim before the storm, gone in it, bright once the beacon is lit) and a moon */
+const STARS = 700;
+const Stars: React.FC<{amt: number; scale: number}> = ({amt, scale}) => {
+  const {geo, material} = useMemo(() => {
+    const g = new THREE.BufferGeometry();
+    const p = new Float32Array(STARS * 3);
+    for (let i = 0; i < STARS; i++) {
+      const a = rnd(i + 900) * Math.PI * 2;
+      const e = Math.asin(0.04 + 0.96 * rnd(i + 901) ** 1.4);
+      const r = 260;
+      p.set([CENTER[0] + Math.cos(e) * Math.sin(a) * r, Math.sin(e) * r - 20, CENTER[2] + Math.cos(e) * Math.cos(a) * r], i * 3);
+    }
+    g.setAttribute('position', new THREE.BufferAttribute(p, 3));
+    g.setAttribute('aSize', new THREE.BufferAttribute(Float32Array.from({length: STARS}, (_, i) => 0.5 + 1.6 * rnd(i + 902) ** 3), 1));
+    g.setAttribute('aA', new THREE.BufferAttribute(Float32Array.from({length: STARS}, (_, i) => 0.35 + 0.65 * rnd(i + 903)), 1));
+    const m = new THREE.ShaderMaterial({vertexShader: FLAKE_VERT, fragmentShader: FLAKE_FRAG, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, uniforms: {uScale: {value: 1}, uAmt: {value: 0}}});
+    return {geo: g, material: m};
+  }, []);
+  useEffect(
+    () => () => {
+      geo.dispose();
+      material.dispose();
+    },
+    [geo, material],
+  );
+  material.uniforms.uScale.value = scale;
+  material.uniforms.uAmt.value = amt;
+  if (amt < 0.02) return null;
+  return <points geometry={geo} material={material} renderOrder={-4} frustumCulled={false} />;
+};
+const MOON: V3 = [-60, 70, 170];
+const Moon: React.FC<{amt: number}> = ({amt}) => (
+  <>
+    <Glow p={MOON} w={60} h={60} color="#8fa8ff" a={0.22 * amt} />
+    <Glow p={MOON} w={18} h={18} color="#dfe8ff" a={0.5 * amt} />
+    <Glow p={MOON} w={7.5} h={7.5} color="#f4f8ff" a={1.0 * amt} />
+  </>
+);
+/** the endless stair climbs into a bank of cloud */
+const HIGH = Array.from({length: 10}, (_, i) => ({j: N + PL + 14 + i * 3.4 + rnd(i + 70) * 2, dx: (rnd(i + 71) - 0.5) * 3, dy: (rnd(i + 72) - 0.3) * 1.2, w: 3 + 3 * rnd(i + 73)}));
+const HighClouds: React.FC<{t: number; q: THREE.Quaternion; a: number}> = ({t, q, a}) => (
+  <>
+    {HIGH.map((c, i) => (
+      <BPuff key={i} p={[NARROW.x + c.dx + 0.4 * Math.sin(t * 0.2 + i), treadY(Math.round(c.j), true) + c.dy, treadZ(c.j)]} w={c.w} h={c.w * 0.42} color="#3a4462" a={0.55 * a} seed={i * 2.9 + 40} q={q} />
+    ))}
   </>
 );
 
@@ -519,7 +571,10 @@ export const World: React.FC<{t: number; cam: Cam}> = ({t, cam}) => {
   ];
   return (
     <>
+      <Stars amt={(0.35 * (1 - ss(t, T.storm - 3, T.storm - 1)) + clear) * (1 - storm * 0.9)} scale={1300} />
+      <Moon amt={1 - 0.8 * storm} />
       <Ranges flash={flash} />
+      <HighClouds t={t} q={camQ} a={0.6 + 0.4 * storm} />
       <Clouds t={t} storm={storm} clear={clear} q={camQ} />
       <Base flash={flash} crowd={crowd} />
       {crowd > 0 || t < T.crowdOff + 2 ? <Crowd t={t} /> : null}
@@ -573,8 +628,17 @@ export const World: React.FC<{t: number; cam: Cam}> = ({t, cam}) => {
       ))}
       <Ring t={t} at={T.ignite} p={add(st[3].stone.p, [0, 0, 0.3])} r={1.8} color="#fff4d8" life={1.0} />
       <Ring t={t} at={T.ignite + 0.1} p={add(st[3].stone.p, [0, 0, 0.3])} r={1.1} color={TINT.gold} life={0.8} />
-      {beacon > 0 ? <Glow p={add(st[3].stone.p, [0, 7, -0.2])} w={0.9 + 0.3 * Math.sin(t * 7)} h={14} color={TINT.gold} a={0.5 * beacon * ss(t, T.ignite, T.ignite + 0.4)} mode="beam" /> : null}
+      {beacon > 0 ? <Glow p={add(st[3].stone.p, [0, 7, -0.2])} w={0.9 + 0.3 * Math.sin(t * 7)} h={14} color={TINT.gold} a={0.65 * beacon * ss(t, T.ignite, T.ignite + 0.4)} mode="beam" /> : null}
       {beacon > 0 ? <Glow p={[st[3].stone.p[0], TOP_Y + 0.02, st[3].stone.p[2]]} w={5} h={3} color={TINT.gold} a={0.3 * beacon} flat /> : null}
+      {beacon > 0
+        ? Array.from({length: 26}, (_, k) => {
+            const per = 1.4 + rnd(k + 700) * 1.2;
+            const ph = fract((t - T.ignite) / per + rnd(k + 701));
+            const sp = st[3].stone.p;
+            const x = sp[0] + (rnd(k + 702) - 0.5) * 0.5 + Math.sin(t * 2 + k) * 0.15 * ph;
+            return <Glow key={`e${k}`} p={[x, sp[1] + 0.1 + ph * 2.6, sp[2] + (rnd(k + 703) - 0.5) * 0.4]} w={0.06} h={0.06} color={k % 3 ? TINT.gold : '#fff1c8'} a={0.9 * beacon * Math.sin(Math.PI * ph)} />;
+          })
+        : null}
       {bursts.map((b, i) => (
         <BurstFx key={i} t={t} b={b} />
       ))}

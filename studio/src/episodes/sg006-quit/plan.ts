@@ -325,6 +325,8 @@ export const motivation = (t: number): State => {
 };
 const XSZ = (r: Rig) => r.pel[2] * K3;
 
+/** Ego waves to the crowd between these times */
+export const EGO_WAVE = [B(1), B(5)];
 /** Ego: upright and showy under the spotlight; the crowd leaves, he turns to look, drops the stone and sits */
 const NE = (t: number) => Math.min(14.75, steps(t, T.go + 0.18, [[1e9, PB]]));
 export const ego = (t: number): State => {
@@ -337,6 +339,19 @@ export const ego = (t: number): State => {
   const look = ss(t, T.egoLook, T.egoLook + 0.6) * (1 - ss(t, T.egoDrop - 0.45, T.egoDrop - 0.05));
   if (look > 0) base = {...base, fwd: [Math.sin(-2.0 * look), 0, Math.cos(-2.0 * look)], up: norm([0, 1, lerp(Math.tan((16 * Math.PI) / 180), -0.05, look)])};
   let rig = carry(base);
+  // showing off for the crowd: one hand on the stone, the other waves to the phones
+  const wave = ss(t, EGO_WAVE[0], EGO_WAVE[0] + 0.3) * (1 - ss(t, EGO_WAVE[1] - 0.3, EGO_WAVE[1]));
+  if (wave > 0) {
+    const upv = norm(rig.up);
+    const shc = add(rig.pel, mul(upv, SHC));
+    const w: Rig = {
+      ...rig,
+      hand: [add(shc, [-0.3, 0.56 + 0.03 * Math.sin(t * 24), 0.18 + 0.17 * Math.sin(t * 12)]), rig.hand[1]],
+      elbow: [[-1, -0.5, 0.2], rig.elbow![1]],
+      head: [-0.02, 0.05, 0.02],
+    };
+    rig = mixRig(rig, w, wave);
+  }
   // the drop: he straightens, opens his hands, the stone slides off behind him; he sits, arms crossed, turned away
   const drop = ss(t, T.egoDrop - 0.12, T.egoDrop + 0.12);
   const stood: Rig = {...walk(14.75, {lean: 2, crouch: 0.06}), elbow: [[-1, -0.2, 0], [1, -0.2, 0]]};
@@ -472,7 +487,7 @@ export const discipline = (t: number): State => {
       rig = a === keys[0] ? mixRig(carry(body), hold, ss(k, 0, 0.35)) : hold;
     } else {
       const free = holdAt(body, stoneL);
-      const rest = walk(N + 0.75, {lean: 4, crouch: 0.06});
+      const rest = {...walk(N + 0.75, {lean: lerp(4, -7, ss(t, T.cap2 - 0.6, T.cap2 + 0.6)), crouch: 0.06}), head: [0, 0.02, -0.03] as V3};
       const restH: Rig = {...rest, hand: [add(rest.pel, [-0.24, -0.28, 0.06]), add(stoneL, [0.0, SRL * 0.95, -0.05])], elbow: [[-1, -0.3, 0.3], [1, -0.2, 0.3]]};
       rig = mixRig(free, restH, ss(t, T.place + 0.05, T.place + 0.7));
     }

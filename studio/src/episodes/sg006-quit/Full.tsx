@@ -120,11 +120,13 @@ const SHOTS: Shot[] = [
     const o = at(2, t);
     return {viewH: lerp(8.5, 10, k), cx: lerp(1.0, 0.7, k), cy: lerp(TOP_Y + 2.2, (o.y + TOP_Y) / 2 + 1.6, k), cz: lerp(treadZ(N + PL + 3), o.z - 3, k), pitch: -3, yaw: 180 - 12, roll: 0, fov: 30};
   }],
-  // the end: up and away
+  // the end: up and away — the beacon low in the frame, Obsession's light high on the stair
   [B(40), (t) => {
     const k = E(seg(t, B(40), T.end));
     const o = at(2, t);
-    return {viewH: lerp(11, 14, k), cx: 0.6, cy: lerp(TOP_Y + 3.2, TOP_Y + 4.6, k), cz: lerp(o.z - 5, o.z - 4, k), pitch: lerp(4, 9, k), yaw: 180 - 12 - 6 * k, roll: 0, fov: 30};
+    const dz = treadZ(N + 1);
+    const span = Math.max(o.y - TOP_Y, 1);
+    return {viewH: lerp(span * 1.9 + 4.5, span * 1.9 + 6, k), cx: lerp(0.9, 0.7, k), cy: (o.y + TOP_Y) / 2 + lerp(0.6, 1.0, k), cz: (o.z + dz) / 2, pitch: lerp(2, 6, k), yaw: 180 - 12 - 6 * k, roll: 0, fov: 30};
   }],
 ];
 
