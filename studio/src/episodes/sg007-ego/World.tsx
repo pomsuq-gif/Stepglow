@@ -28,7 +28,9 @@ export const lights = (t: number) => {
   // the active table is brightest
   const active = t < 4.9 ? 0 : t < 9.45 ? 1 : t < 16.2 ? 2 : t < 25 ? 3 : 4;
   const spots = [0, 1, 2, 3, 4].map((i) => {
-    const base = i === active ? 1 : 0.55;
+    // every table lit the same, so the grade doesn't jump from shot to shot
+    const base = 1;
+    void active;
     // in the dark: Obsession's spot clunks on, then Discipline's far away; Ego keeps a red glow
     const dark = i === 3 ? ss(t, 16.72, 16.78) : i === 4 ? ss(t, K.more - 0.03, K.more + 0.03) : 0;
     return lerp(dark, base, house);

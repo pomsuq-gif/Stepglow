@@ -248,7 +248,7 @@ export const SG007Full: React.FC<{withAudio?: boolean; style?: string}> = ({with
   const wins = [K.w1, K.w2, K.w3, K.broke];
   const flash = wins.reduce((m, w, i) => Math.max(m, (i === 1 ? 0.15 : 0.4) * hit(t, w, 9)), 0) + 0.7 * hit(t, K.slam, 7) + 0.25 * hit(t, K.slam + 0.36, 9);
   const ego = CAST[0](t);
-  const red = 0.22 * clamp(ego.aura - 0.3) * (t < K.slam ? 1 : 0) + 0.15 * hit(t, K.w3, 3);
+  const red = sty.id.startsWith('blocks') ? 0 : 0.22 * clamp(ego.aura - 0.3) * (t < K.slam ? 1 : 0) + 0.15 * hit(t, K.w3, 3);
   const blocks = sty.id.startsWith('blocks');
   const vars = {
     ['--capf' as string]: blocks ? 'Nunito' : 'Sora',

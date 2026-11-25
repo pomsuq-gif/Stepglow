@@ -533,13 +533,13 @@ const CrowdBlocks: React.FC<{t: number}> = ({t}) => {
       Array.from({length: n}, (_, i) => {
         const r = Math.floor(i / 70);
         const k = i % 70;
-        return {x: -12 + k * 0.36 + (R(i) - 0.5) * 0.16, y: 0.62 + r * 0.9, z: -12.45 - r * 0.5, c: ['#5a6a8a', '#8a5a5a', '#6a8a6a', '#8a7a5a', '#6a5a8a', '#4a5a6a', '#9a9aa8'][Math.floor(R(i + 9) * 7)], s: 0.9 + 0.2 * R(i + 3), seed: i, skip: R(i + 1) < 0.12};
+        return {x: -12 + k * 0.36 + (R(i) - 0.5) * 0.16, y: 0.62 + r * 0.9, z: -27.45 - r * 0.6, c: ['#5a6a8a', '#8a5a5a', '#6a8a6a', '#8a7a5a', '#6a5a8a', '#4a5a6a', '#9a9aa8'][Math.floor(R(i + 9) * 7)], s: 0.9 + 0.2 * R(i + 3), seed: i, skip: R(i + 1) < 0.12};
       }),
     [],
   );
   const bodyGeo = useMemo(() => new THREE.BoxGeometry(0.34, 0.3, 0.2), []);
   const headGeo = useMemo(() => new THREE.BoxGeometry(0.19, 0.18, 0.18), []);
-  const mat = useMemo(() => new THREE.MeshStandardMaterial({roughness: 0.7}), []);
+  const mat = useMemo(() => new THREE.MeshStandardMaterial({roughness: 0.9, color: '#3a3a44'}), []);
   const refs = React.useRef<[THREE.InstancedMesh | null, THREE.InstancedMesh | null]>([null, null]);
   const m4 = new THREE.Matrix4();
   const col = new THREE.Color();
@@ -646,7 +646,7 @@ export const HallPro: React.FC<{t: number}> = ({t}) => {
   return (
     <>
       <color attach="background" args={['#07080d']} />
-      <fogExp2 attach="fog" args={['#120f16', 0.055]} />
+      <fog attach="fog" args={['#0b0a10', 11, 30]} />
       <Floor m={floor} />
       {/* court lines and the red runway with gold edges along the tables */}
       <mesh position={[1.1, 0.002, z0]} rotation={[-Math.PI / 2, 0, -0.2]} material={lines}>
@@ -673,19 +673,19 @@ export const HallPro: React.FC<{t: number}> = ({t}) => {
       {/* stands, seats, the crowd */}
       {Array.from({length: 6}, (_, r) => (
         <React.Fragment key={r}>
-          <Bx p={[1, 0.25 + r * 0.45, -12.6 - r * 0.5]} s={[26, 0.5 + r * 0.9, 0.5]} m={stand} cast={false} />
-          <Bx p={[1, 0.62 + r * 0.9, -12.42 - r * 0.5]} s={[25.5, 0.1, 0.36]} m={seat} cast={false} />
+          <Bx p={[1, 0.25 + r * 0.45, -27.6 - r * 0.6]} s={[26, 0.5 + r * 0.9, 0.5]} m={stand} cast={false} />
+          <Bx p={[1, 0.62 + r * 0.9, -27.42 - r * 0.6]} s={[25.5, 0.1, 0.36]} m={seat} cast={false} />
         </React.Fragment>
       ))}
       <CrowdBlocks t={t} />
       {/* the big screen and its frame */}
-      <Bx p={[1.1, 6.4, -15.6]} s={[9.6, 3.4, 0.2]} m={std('#0c0d12', 0.5, 0.6)} cast={false} />
-      <mesh position={[1.1, 6.4, -15.48]} material={screen} visible={L.house > 0.3}>
-        <planeGeometry args={[9.2, 3.0]} />
+      <Bx p={[1.1, 8.6, -31.2]} s={[13, 4.4, 0.2]} m={std('#0c0d12', 0.5, 0.6)} cast={false} />
+      <mesh position={[1.1, 8.6, -31.08]} material={screen} visible={L.house > 0.3}>
+        <planeGeometry args={[12.5, 4.0]} />
       </mesh>
       {Array.from({length: 5}, (_, k) => (
-        <mesh key={k} position={[1.1 + (k - 2) * 1.6, 6.4, -15.46]} material={led(['#ef4b3f', '#f59a2e', '#3fc495', '#f2c531', '#9a6cf0'][k])}>
-          <planeGeometry args={[1.2, 1.2]} />
+        <mesh key={k} position={[1.1 + (k - 2) * 2.2, 8.6, -31.06]} material={led(['#ef4b3f', '#f59a2e', '#3fc495', '#f2c531', '#9a6cf0'][k])}>
+          <planeGeometry args={[1.6, 1.6]} />
         </mesh>
       ))}
       {/* truss over the tables, a par can over each, two cool back lights */}
@@ -697,7 +697,7 @@ export const HallPro: React.FC<{t: number}> = ({t}) => {
         return (
           <React.Fragment key={i}>
             <ParCan p={p} to={[c[0], 0, c[2]]} color="#ffe8c8" a={q(0.07 * L.spots[i])} />
-            <Spot p={p} target={[c[0], 0.6, c[2]]} color="#ffe6c4" intensity={(i < 3 ? 6.5 : 5.5) * L.spots[i] * (1 + 0.6 * (i < 4 ? hit(t, [KT.w1, KT.w2, KT.w3, KT.broke][i], 5) : hit(t, KT.slam, 4)))} angle={0.5} shadow={i === 0 || i === 2 || i === 4} />
+            <Spot p={p} target={[c[0], 0.6, c[2]]} color="#ffe6c4" intensity={6 * L.spots[i]} angle={0.5} shadow={i === 0 || i === 2 || i === 4} />
           </React.Fragment>
         );
       })}
