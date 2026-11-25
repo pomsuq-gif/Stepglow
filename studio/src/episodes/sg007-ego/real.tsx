@@ -647,6 +647,8 @@ const BEAM_VERT = `varying vec2 vUv; varying vec3 vN; varying vec3 vV; void main
 const beamMat = (c: string, a: number) => P(`beam${c}${a}`, () => new THREE.ShaderMaterial({vertexShader: BEAM_VERT, fragmentShader: BEAM_FRAG, transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, uniforms: {uC: {value: new THREE.Color(c)}, uA: {value: a}}, fog: false}));
 
 /** the runway along the row of tables: centre and angle */
+/** x of truss line k (0 = right, 1 = left) at depth z: the par cans hang from it */
+const trussX = (z: number, k: number) => (k ? -1.2 : 0.9) + (z - 2.5) * (4.5 / 18.5);
 const RC: V3 = [-2.06, 0, -7.0];
 const RA = Math.atan2(14.0, -4.12);
 
@@ -712,7 +714,7 @@ export const HallPro: React.FC<{t: number}> = ({t}) => {
       <Truss a={[0.9, 4.8, 2.5]} b={[-3.6, 4.8, -16]} />
       <Truss a={[-1.2, 4.8, 2.5]} b={[-5.7, 4.8, -16]} />
       {TABLES.map((c, i) => {
-        const p: V3 = [c[0] - 0.1, 4.62, c[2] + 0.55];
+        const p: V3 = [trussX(c[2] + 0.55, 0), 4.56, c[2] + 0.55];
         return (
           <React.Fragment key={i}>
             <ParCan p={p} to={[c[0], 0, c[2]]} color="#ffe8c8" a={q(0.06 * L.spots[i])} />
@@ -722,8 +724,8 @@ export const HallPro: React.FC<{t: number}> = ({t}) => {
       })}
       {[0, 1].map((x, k) => (
         <React.Fragment key={k}>
-          <ParCan p={[2.6 - 1.2 * k, 4.4, -3 - 7 * k]} to={[-1 - 1.5 * k, 0, -4 - 7 * k]} color="#5a8aff" a={q(0.05 * L.house)} />
-          <Spot p={[2.6 - 1.2 * k, 4.4, -3 - 7 * k]} target={[-1 - 1.5 * k, 0.8, -4 - 7 * k]} color="#6a96ff" intensity={4 * L.house} angle={0.7} shadow={false} />
+          <ParCan p={[trussX(-5 - 6 * k, 1), 4.56, -5 - 6 * k]} to={[-1 - 1.5 * k, 0, -4 - 7 * k]} color="#5a8aff" a={q(0.05 * L.house)} />
+          <Spot p={[trussX(-5 - 6 * k, 1), 4.56, -5 - 6 * k]} target={[-1 - 1.5 * k, 0.8, -4 - 7 * k]} color="#6a96ff" intensity={4 * L.house} angle={0.7} shadow={false} />
         </React.Fragment>
       ))}
       <Spot p={[1.1, 3, 6]} target={[1.1, 0.8, -2]} color="#ffd8b0" intensity={1.6 * L.house} angle={0.6} shadow={false} />

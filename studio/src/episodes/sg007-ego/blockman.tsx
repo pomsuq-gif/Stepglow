@@ -105,13 +105,7 @@ export const BlockMan: React.FC<{j: J3; idx: number; spent: number; energy: numb
           <Blk a={el} b={h} w={0.085} d={0.085} side={side} m={mLimb} ext={0.03} />
           <Cube p={h} s={[0.12, 0.12, 0.12]} basis={gloveBasis(norm(sub(h, el)))} m={mGlove} />
           {/* gripping: the thumb wraps over the other fist */}
-          {other && !noArm && i === 0
-            ? (() => {
-                const fy = norm(sub(h, el));
-                const to = norm(sub(other, h));
-                return <Cube p={add(add(h, mul(fy, 0.055)), mul(to, 0.055))} s={[0.06, 0.04, 0.07]} basis={gloveBasis(fy)} m={mGlove} />;
-              })()
-            : null}
+          {void other}
         </React.Fragment>
       ))}
       {legs.map(([h, k, f], i) => (
