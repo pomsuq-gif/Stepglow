@@ -54,13 +54,13 @@ const SHOTS: Shot[] = [
     return {viewH: lerp(9.8, 9.0, k), cx: 0.3, cy: lerp(3.0, 2.7, k), cz: lerp(3.4, 2.8, k), pitch: 3, yaw: 180 - 10 + 4 * k, roll: 0, fov: 30};
   }],
   // the weight lands
-  [T.slam, (t) => ({viewH: lerp(5.6, 5.2, seg(t, T.slam, DROP)), cx: 0, cy: 1.0, cz: -0.2, pitch: 34, yaw: -6, roll: 0, fov: 30})],
-  // the drop: everyone, from above, the camera backs up the stair with them
+  [T.slam, (t) => ({viewH: lerp(5.6, 5.0, seg(t, T.slam, DROP)), cx: 0.1, cy: 1.05, cz: 0.1, pitch: 26, yaw: lerp(-44, -36, seg(t, T.slam, DROP)), roll: 0, fov: 30})],
+  // the drop: in profile, the stair rising to the right — Motivation races ahead, Discipline keeps the beat
   [DROP, (t) => {
-    const g = at(1, t);
     const m = at(0, t);
-    const z = (g.z + m.z) / 2;
-    return {viewH: 6.4, cx: -0.1, cy: (g.y + m.y) / 2 + 0.3, cz: z, pitch: 36, yaw: lerp(-14, 6, E(seg(t, DROP, B(4)))), roll: 0, fov: 32};
+    const d = at(3, t);
+    const k = seg(t, DROP, B(4));
+    return {viewH: lerp(6.4, 7.2, k), cx: 0, cy: (m.y + d.y) / 2 + 0.55, cz: (m.z + d.z) / 2, pitch: 14, yaw: lerp(-74, -66, k), roll: -2, fov: 30};
   }],
   // Motivation burns out, close from the front-left; the others pass him
   [B(4), (t) => {
@@ -73,13 +73,17 @@ const SHOTS: Shot[] = [
     const g = at(1, t);
     return {viewH: 6.6, cx: 0.1, cy: g.y + 0.1, cz: g.z - 0.6, pitch: 38, yaw: lerp(8, -4, seg(t, B(9), B(12))), roll: 0, fov: 32};
   }],
-  // the crowd below goes dark; Ego looks back
+  // high over Ego, down the whole stair to the crowd: their lights go out one by one
   [B(12), (t) => {
-    const k = E(seg(t, B(12), B(14.2)));
-    return {viewH: lerp(9.0, 7.4, k), cx: lerp(-0.2, XS[1] + 0.2, k), cy: lerp(2.2, 2.6, k), cz: lerp(2.0, 3.6, k), pitch: 40, yaw: lerp(-6, -18, k), roll: 0, fov: 32};
+    const k = E(seg(t, B(12), B(14.5)));
+    const g = at(1, Math.min(t, B(14.5)));
+    return {viewH: lerp(12.5, 6.0, k), cx: lerp(-0.3, XS[1], k), cy: lerp(0.2, g.y + 0.2, k), cz: lerp(-2.6, g.z - 1.2, k), pitch: lerp(46, 40, k), yaw: lerp(-14, -22, k), roll: 0, fov: 32};
   }],
   // he lets go; the stone goes back down to where the crowd was
-  [B(15), (t) => ({viewH: lerp(4.6, 5.2, seg(t, B(15), B(17))), cx: XS[1] - 0.1, cy: 2.9, cz: 4.9, pitch: 22, yaw: lerp(-34, -26, seg(t, B(15), B(17))), roll: 1, fov: 28})],
+  [B(15), (t) => {
+    const g = at(1, B(15));
+    return {viewH: lerp(4.4, 4.9, seg(t, B(15), B(17))), cx: XS[1] + 0.1, cy: g.y + 0.45, cz: g.z, pitch: 20, yaw: lerp(-34, -26, seg(t, B(15), B(17))), roll: 1, fov: 28};
+  }],
   // the two that are left
   [B(17), (t) => {
     const p = pair(t);
@@ -93,7 +97,7 @@ const SHOTS: Shot[] = [
   // Discipline: one step per beat, unmoved
   [B(24), (t) => {
     const d = at(3, t);
-    return {viewH: 3.4, cx: XS[3], cy: d.y + 0.5, cz: d.z + 0.1, pitch: 26, yaw: lerp(-20, -12, seg(t, B(24), B(26))), roll: 1, fov: 28};
+    return {viewH: 4.3, cx: XS[3] + 0.1, cy: d.y + 0.55, cz: d.z + 0.1, pitch: 22, yaw: lerp(30, 22, seg(t, B(24), B(26))), roll: 1, fov: 28};
   }],
   // Obsession tears up to the top
   [B(26), (t) => {
@@ -103,7 +107,7 @@ const SHOTS: Shot[] = [
   // the break: from behind, up at the summit; Obsession does not stop
   [B(28), (t) => {
     const k = E(seg(t, B(28), B(32)));
-    return {viewH: lerp(6.4, 7.6, k), cx: lerp(0.9, 0.8, k), cy: lerp(TOP_Y + 0.6, TOP_Y + 1.2, k), cz: lerp(treadZ(N - 1), treadZ(N + 1), k), pitch: -6, yaw: 180 - 14 + 6 * k, roll: 0, fov: 30};
+    return {viewH: lerp(7.4, 8.4, k), cx: lerp(1.7, 1.4, k), cy: lerp(TOP_Y + 1.0, TOP_Y + 1.5, k), cz: lerp(treadZ(N - 1), treadZ(N + 1), k), pitch: -5, yaw: 180 - 28 + 8 * k, roll: 0, fov: 30};
   }],
   // the beacon
   [B(32), (t) => {
@@ -214,7 +218,8 @@ const Over: React.FC<{t: number}> = ({t}) => {
       {st.map((s, i) => {
         const {x, y} = P[i];
         const show = ss(t, T.slam + 0.2, T.slam + 0.6) * (1 - ss(t, B(28) - 0.3, B(28)));
-        const o = show * ss(y, 330, 420) * (1 - ss(y, 1560, 1640)) * ss(x, 40, 110) * (1 - ss(x, 970, 1040)) * s.label * (1 - hidden[i]);
+        const gone = s.status ? ss(t, s.status.at + 3.2, s.status.at + 3.7) : 0;
+        const o = show * ss(y, 330, 420) * (1 - ss(y, 1560, 1640)) * ss(x, 40, 110) * (1 - ss(x, 970, 1040)) * s.label * (1 - hidden[i]) * (1 - gone);
         if (o < 0.01) return null;
         const a = s.status?.at ?? 1e9;
         const sk = clamp((t - a) / 0.22);

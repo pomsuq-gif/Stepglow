@@ -197,13 +197,13 @@ const Crowd: React.FC<{t: number}> = ({t}) => (
       const s = c.h;
       const bob = 0.02 * Math.sin(t * 5 + c.seed) * (1 - gone);
       const p: V3 = [c.x, -0.45 - 0.6 * gone, c.z];
-      const head: V3 = add(p, [0, 1.42 * s + bob, 0]);
-      const ph: V3 = add(p, [0.12 * s, 1.5 * s + bob, 0.18]);
+      const head: V3 = add(p, [0, 1.3 * s + bob, 0]);
+      const ph: V3 = add(p, [0.12 * s, 1.42 * s + bob, 0.2]);
       const flash = c.phone ? hit(t, Math.floor((t + rnd(i) * 3) / (1.9 + rnd(i + 9) * 2.2)) * (1.9 + rnd(i + 9) * 2.2) - rnd(i) * 3, 9) : 0;
       return (
         <React.Fragment key={i}>
-          <Limb a={add(p, [0, 0.1, 0])} b={add(p, [0, 1.2 * s, 0])} r0={0.13 * s} r1={0.2 * s} m={SHADOW} y0={0} y1={1.6} />
-          <Ball p={head} r={0.15 * s} m={SHADOW} y0={0} y1={1.6} />
+          <Limb a={add(p, [0, 0.35, 0])} b={add(p, [0, 1.02 * s, 0])} r0={0.15 * s} r1={0.24 * s} m={SHADOW} y0={0} y1={1.6} />
+          <Ball p={head} r={0.17 * s} m={SHADOW} y0={0} y1={1.6} />
           {c.phone ? (
             <>
               <Limb a={add(p, [0.1 * s, 1.1 * s, 0.04])} b={ph} r0={0.04} r1={0.035} m={SHADOW} y0={0} y1={1.6} />

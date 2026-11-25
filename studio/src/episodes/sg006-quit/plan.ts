@@ -23,7 +23,7 @@ const B = beat;
 export const D = 0.36;
 export const R = 0.2;
 export const N = 32;
-export const PL = 4;
+export const PL = 3;
 export const STAIR_W = 1.75;
 /** the endless stair: centred on Obsession's lane */
 export const NARROW = {x: XS[2], w: 0.44};
@@ -146,7 +146,7 @@ export const T = {
   egoDrop: B(15.25),
   egoSit: B(16.5),
   storm: B(20),
-  obsTop: B(26),
+  obsTop: B(24),
   disTop: B(29),
   lift: B(29.25),
   high: B(30.6),
@@ -396,10 +396,10 @@ const OBS_SEGS: [number, number][] = [
   [B(11), 0.45],
   [B(17), 1.4],
   [B(19), 0.45],
-  [B(26), 1.45],
+  [B(24), 1.5],
 ];
-const OBS_K = N / steps(B(26), T.go, OBS_SEGS.map(([b, v]) => [b, v * PB]));
-export const NO = (t: number) => (t <= B(26) ? OBS_K * steps(t, T.go, OBS_SEGS.map(([b, v]) => [b, v * PB])) : N + (t - B(26)) * 1.4 * PB);
+const OBS_K = N / steps(B(24), T.go, OBS_SEGS.map(([b, v]) => [b, v * PB]));
+export const NO = (t: number) => (t <= B(24) ? OBS_K * steps(t, T.go, OBS_SEGS.map(([b, v]) => [b, v * PB])) : N + (t - B(24)) * 1.8 * PB);
 /** how hard he is going now (1 = sprinting, 0 = doubled over) */
 const obsRate = (t: number) => {
   let v = OBS_SEGS[OBS_SEGS.length - 1][1];
