@@ -25,7 +25,7 @@ for (const [si, style] of styles.entries()) {
   }
   const col = path.join(outDir, `col-${style}.png`);
   const label = `${si + 1}. ${names[si]}`.replace(/:/g, '\\:');
-  execFileSync('ffmpeg', ['-v', 'error', '-y', ...files.flatMap((f) => ['-i', f]), '-filter_complex', `${files.map((_, i) => `[${i}]`).join('')}vstack=inputs=${files.length},pad=iw:ih+64:0:64:black,drawtext=text='${label}':x=(w-tw)/2:y=16:fontsize=34:fontcolor=white`, col]);
+  execFileSync('ffmpeg', ['-v', 'error', '-y', ...files.flatMap((f) => ['-i', f]), '-filter_complex', `${files.map((_, i) => `[${i}]`).join('')}${files.length > 1 ? `vstack=inputs=${files.length},` : ''}pad=iw:ih+64:0:64:black,drawtext=text='${label}':x=(w-tw)/2:y=16:fontsize=34:fontcolor=white`, col]);
   cols.push(col);
 }
 const sheet = path.join(outDir, 'styles-sheet.jpg');

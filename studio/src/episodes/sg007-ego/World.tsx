@@ -12,6 +12,7 @@ import {CAST, TINT, TINTS, TP, tw, WALL, type State} from './plan';
 import {clasp, PEG, solveR, TOP, TY} from './rig';
 import {CLAY, useSty} from './styles';
 import {ToonFig} from './toon';
+import {EnvWorld} from './envs';
 
 const G = 9.8;
 const q = (x: number, n = 16) => Math.round(clamp(x) * n) / n;
@@ -549,20 +550,22 @@ export const World: React.FC<{t: number}> = ({t}) => {
   const dazed = ss(t, K.slam + 1.0, K.slam + 1.3);
   const egoHead = W3(js[0].head, [0, 0, 0], K3);
 
+  const arena = !sty.env || sty.env === 'arena';
   return (
     <>
-      <Floor pools={pools} house={L.house} />
+      {arena ? null : <EnvWorld env={sty.env!} t={t} />}
+      {arena ? <Floor pools={pools} house={L.house} /> : null}
       {/* spot cones from the rig above */}
-      {[0, 1, 2, 3, 4].map((i) => {
+      {arena && [0, 1, 2, 3, 4].map((i) => {
         const c = tw(i);
         return <Cone key={`c${i}`} p={[c[0] + 0.1, 0, c[2] + 0.1]} r={1.7} h={7.5} color={pools[i].color} a={0.055 * sty.cone * L.spots[i] * (1 + 0.8 * (i < 4 ? hit(t, wins[i], 4) : hit(t, K.slam, 3)))} />;
       })}
-      {[0, 1, 2, 3, 4].map((i) => (
+      {arena && [0, 1, 2, 3, 4].map((i) => (
         <Glow key={`l${i}`} p={[tw(i)[0] + 0.1, 7.4, tw(i)[2] + 0.1]} w={0.6} h={0.35} color="#ffffff" a={0.8 * L.spots[i] * Math.min(1, sty.cone)} />
       ))}
-      {sty.crowdAmt > 0 ? <Glow p={[1.5, 2.6, -14]} w={22} h={8} color={look.bg.glow} a={0.35 * L.house} /> : null}
-      <Crowd t={t} house={L.house} />
-      <Score t={t} house={L.house} />
+      {arena && sty.crowdAmt > 0 ? <Glow p={[1.5, 2.6, -14]} w={22} h={8} color={look.bg.glow} a={0.35 * L.house} /> : null}
+      {arena ? <Crowd t={t} house={L.house} /> : null}
+      {arena ? <Score t={t} house={L.house} /> : null}
       <Wall t={t} house={L.house} />
       {[0, 1, 2, 3, 4].map((i) => (
         <Table key={`t${i}`} i={i} shake={shakes[i]} color={TINTS[i + 1]} />
@@ -588,9 +591,9 @@ export const World: React.FC<{t: number}> = ({t}) => {
               <Man j={j} root={[0, 0, 0]} k={K3} l={l}>
                 {i === 0 && !crownFly ? <Crown j={j} /> : null}
               </Man>
-            ) : sty.fig === 'flat' || sty.fig === 'ink' ? null : (
+            ) : sty.fig === 'flat' || sty.fig === 'ink' || sty.fig === 'paper' ? null : (
               <>
-                <ToonFig j={j} sty={sty} tint={s.tint} idx={i} energy={Math.min(1.3, s.energy) * vis} aura={s.aura} spent={s.spent} noArm={s.noArm} color={sty.fig === 'clay' ? CLAY[i] : undefined} />
+                <ToonFig j={j} sty={sty} tint={s.tint} idx={i} energy={Math.min(1.3, s.energy) * vis} aura={s.aura} spent={s.spent} noArm={s.noArm} color={sty.fig === 'clay' || sty.fig === 'vinyl' ? CLAY[i] : undefined} />
                 {i === 0 && !crownFly ? (
                   <group scale={[K3, K3, K3]}>
                     <Crown j={j} />
@@ -598,8 +601,8 @@ export const World: React.FC<{t: number}> = ({t}) => {
                 ) : null}
               </>
             )}
-            {sty.fig === 'clay' || sty.fig === 'ink' ? null : <Glow p={[c[0], 0.03, c[2]]} w={1.0} h={0.8} color={s.tint} a={(0.18 + 0.2 * Math.min(1.3, s.energy)) * (1 - s.spent) * vis} flat />}
-            {sty.fig === 'flat' || sty.fig === 'ink' ? null : <Aura t={t} j={j} amt={s.aura * (i === 0 ? 1 : vis) * (sty.fig === 'clay' ? 0.5 : 1)} color={i === 0 ? '#ff3a22' : s.auraColor} seed={i * 1000} />}
+            {sty.fig === 'clay' || sty.fig === 'ink' || sty.fig === 'paper' || !arena ? null : <Glow p={[c[0], 0.03, c[2]]} w={1.0} h={0.8} color={s.tint} a={(0.18 + 0.2 * Math.min(1.3, s.energy)) * (1 - s.spent) * vis} flat />}
+            {sty.fig === 'flat' || sty.fig === 'ink' || sty.fig === 'paper' ? null : <Aura t={t} j={j} amt={s.aura * (i === 0 ? 1 : vis) * (sty.fig === 'clay' ? 0.5 : 1)} color={i === 0 ? '#ff3a22' : s.auraColor} seed={i * 1000} />}
           </React.Fragment>
         );
       })}

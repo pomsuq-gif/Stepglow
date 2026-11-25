@@ -36,7 +36,7 @@ const egoAt = (t: number) => W3(solveR(CAST[0](t).rig).chest, [0, 0, 0], K3);
 
 /** the shots, cut on the reference's beats; each one moves from a to b */
 const SHOTS: [number, C, C][] = [
-  [0, {...on(0, {dx: 0.2, dz: -1.2}), viewH: 5.6, cy: 0.75, pitch: 20, yaw: -32, fov: 34, roll: -3}, {...on(0, {dx: 0.1, dz: -0.8}), viewH: 4.4, cy: 0.85, pitch: 17, yaw: -24, fov: 34, roll: -1}],
+  [0, {...on(0, {dx: 0.4, dz: -3.2}), viewH: 8.2, cy: 1.6, pitch: 12, yaw: -24, fov: 38, roll: -2}, {...on(0, {dx: 0.3, dz: -2.4}), viewH: 6.6, cy: 1.3, pitch: 12, yaw: -18, fov: 38, roll: -1}],
   [K.t1, on(0, {viewH: 4.3, yaw: -22, roll: -2, cy: 0.85}), on(0, {viewH: 3.8, yaw: -10, roll: 1, cy: 0.85})],
   [K.w1, on(0, {viewH: 2.9, dx: -0.6, yaw: -8, pitch: 6, cy: 0.9}), on(0, {viewH: 3.6, dx: -0.4, dz: -0.9, yaw: -14, pitch: 9, cy: 0.9})],
   [K.t2, on(1, {viewH: 3.3, yaw: 18, roll: 2}), on(1, {viewH: 2.9, yaw: 8, roll: 0})],
@@ -102,7 +102,9 @@ const CAPS: [number, number, Part[], number?][] = [
   [K.except, K.end, [['…except the one who shows up daily.']], 52],
 ];
 
+const CapCtx = React.createContext<React.CSSProperties>({});
 const Caption: React.FC<{t: number}> = ({t}) => {
+  const box = React.useContext(CapCtx);
   const c = CAPS.find(([a, b]) => t >= a && t < b);
   if (!c) return null;
   const [a, b, parts, size = 62] = c;
@@ -111,11 +113,13 @@ const Caption: React.FC<{t: number}> = ({t}) => {
   const o = e * (1 - clamp((t - (b - 0.06)) / 0.06));
   return (
     <div style={{position: 'absolute', left: 540, top: 1470, transform: `translate(-50%, -50%) scale(${1 + 0.12 * (1 - e)})`, whiteSpace: 'pre', fontFamily: 'Sora', fontWeight: 600, fontSize: size, letterSpacing: '0.005em', opacity: o, textShadow: shadow}}>
+      <div style={{display: 'inline-block', ...box}}>
       {parts.map(([s, col], i) => (
         <span key={i} style={{color: col ?? 'var(--txt)', textShadow: col ? `var(--shd), 0 0 30px ${col}77` : 'var(--shd)'}}>
           {s}
         </span>
       ))}
+      </div>
     </div>
   );
 };
@@ -227,13 +231,16 @@ const Speed: React.FC<{t: number; at: number; colors: [string, string]; life?: n
 
 /** caption colour per style: plain words take the style's text colour */
 const StyText: React.FC<{sty: Sty; children: React.ReactNode}> = ({sty, children}) => (
-  <div style={{position: 'absolute', inset: 0, ['--txt' as string]: sty.text, ['--shd' as string]: sty.textShadow}}>{children}</div>
+  <div style={{position: 'absolute', inset: 0, ['--txt' as string]: sty.text, ['--shd' as string]: sty.textShadow}}>
+    <CapCtx.Provider value={sty.cap ?? {}}>{children}</CapCtx.Provider>
+  </div>
 );
 
 const darkness = (t: number) => Math.max(1 - seg(t, 0.0, 0.3), seg(t, SECONDS - 0.4, SECONDS - 0.05));
 
 export const SG007Full: React.FC<{withAudio?: boolean; style?: string}> = ({withAudio = true, style = 'toon'}) => {
   const sty: Sty = STY[style] ?? STY.toon;
+  const light = sty.fig === 'clay' || sty.fig === 'ink' || ['paper', 'comic', 'show', 'colosseum'].includes(sty.env ?? '');
   const frame = useCurrentFrame();
   const {fps} = useVideoConfig();
   const t = frame / fps;
@@ -249,8 +256,8 @@ export const SG007Full: React.FC<{withAudio?: boolean; style?: string}> = ({with
           <World t={t} />
         </StyCtx.Provider>
       </Stage>
-      {sty.fig === 'flat' || sty.fig === 'ink' ? <FlatFigs t={t} c={c} sty={sty} /> : null}
-      <AbsoluteFill style={{background: 'radial-gradient(ellipse 80% 62% at 50% 50%, rgba(255,40,20,0) 45%, rgba(255,40,20,1) 100%)', opacity: red * (sty.fig === 'clay' || sty.fig === 'ink' ? 0.4 : 1), mixBlendMode: sty.fig === 'clay' || sty.fig === 'ink' ? 'multiply' : 'screen'}} />
+      {sty.fig === 'flat' || sty.fig === 'ink' || sty.fig === 'paper' ? <FlatFigs t={t} c={c} sty={sty} /> : null}
+      <AbsoluteFill style={{background: 'radial-gradient(ellipse 80% 62% at 50% 50%, rgba(255,40,20,0) 45%, rgba(255,40,20,1) 100%)', opacity: red * (light ? 0.35 : 1), mixBlendMode: light ? 'multiply' : 'screen'}} />
       <Speed t={t} at={K.w3} colors={['#ff4a3a', '#ffffff']} />
       <Speed t={t} at={K.slam} colors={['#3cc8ff', '#ffffff']} life={0.5} />
       <Labels t={t} c={c} />

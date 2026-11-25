@@ -87,6 +87,10 @@ export const ToonFig: React.FC<{j: J3; sty: Sty; tint: string; idx: number; ener
   if (fig === 'neon') {
     body = shaderMat({col: sty.body[0], shade: sty.body[1], rim: tint, rimAmt: 0.9, bands: false, spec: 0.3, specC: tint});
     joint = body;
+  } else if (fig === 'vinyl') {
+    const c = dull(base);
+    body = shaderMat({col: c, shade: mixHex(c, '#200a30', 0.55), rim: '#ffffff', rimAmt: 0.45, bands: false, spec: 1.2});
+    joint = body;
   } else if (fig === 'clay') {
     const c = dull(base);
     body = shaderMat({col: c, shade: mixHex(c, '#3a2418', 0.45), rim: '#fff4e6', rimAmt: 0.18, bands: false, spec: 0.05});
@@ -123,7 +127,7 @@ export const ToonFig: React.FC<{j: J3; sty: Sty; tint: string; idx: number; ener
     ...P.hip.map((p) => [p, R.leg * 1.02, false] as [V3, number, boolean]),
   ];
   const coreP = add(P.chest, mul(j.fwd, R.torso * 0.95));
-  const coreC = fig === 'clay' ? '#ffffff' : tint;
+  const coreC = fig === 'clay' || fig === 'vinyl' ? '#ffffff' : tint;
   return (
     <>
       {segs.map(([a, b, r], i) => (
@@ -141,8 +145,8 @@ export const ToonFig: React.FC<{j: J3; sty: Sty; tint: string; idx: number; ener
       <Dot p={P.head} r={R.head} m={body} />
       {hull ? <Dot p={P.head} r={R.head + lw * 1.1} m={hull} /> : null}
       {/* the chest light: a lit dot on the chest and its glow */}
-      {fig !== 'clay' ? <Dot p={coreP} r={0.045 + 0.01 * energy} m={shaderMat({col: mixHex(tint, '#ffffff', 0.35), shade: tint, rim: '#ffffff', rimAmt: 0.5, bands: false, spec: 0, emit: 1.5})} /> : null}
-      {fig !== 'clay' ? <Glow p={coreP} w={0.55 + 0.25 * energy} h={0.55 + 0.25 * energy} color={coreC} a={(fig === 'neon' ? 0.5 : 0.35) * energy * (1 - spent * 0.8)} /> : null}
+      {fig !== 'clay' && fig !== 'vinyl' ? <Dot p={coreP} r={0.045 + 0.01 * energy} m={shaderMat({col: mixHex(tint, '#ffffff', 0.35), shade: tint, rim: '#ffffff', rimAmt: 0.5, bands: false, spec: 0, emit: 1.5})} /> : null}
+      {fig !== 'clay' && fig !== 'vinyl' ? <Glow p={coreP} w={0.55 + 0.25 * energy} h={0.55 + 0.25 * energy} color={coreC} a={(fig === 'neon' ? 0.5 : 0.35) * energy * (1 - spent * 0.8)} /> : null}
     </>
   );
 };

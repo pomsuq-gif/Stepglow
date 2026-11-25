@@ -6,7 +6,10 @@ import {SG} from '../sg002-start-small/look';
  * SG007 style options: the same arena, rigs and timing, drawn six ways.
  * fig: how the characters are drawn — 3D (porcelain | toon | neon | clay | marble) or 2D over the 3D world (flat | ink).
  */
-export type Fig = 'porcelain' | 'toon' | 'neon' | 'clay' | 'marble' | 'flat' | 'ink';
+import type {CSSProperties} from 'react';
+import type {Env} from './envs';
+
+export type Fig = 'porcelain' | 'toon' | 'neon' | 'clay' | 'vinyl' | 'marble' | 'flat' | 'ink' | 'paper';
 export type Sty = {
   id: string;
   name: string;
@@ -34,6 +37,9 @@ export type Sty = {
   text: string;
   textShadow: string;
   shadow: number;
+  /** the world around the tables, and the caption box */
+  env?: Env;
+  cap?: CSSProperties;
 };
 
 const night = {...SG, bg: {center: '#111a30', edge: '#020308', glow: '#2c4a8a', glowAmt: 0.28}};
@@ -196,7 +202,67 @@ export const STYLES: Sty[] = [
     shadow: 0.85,
   },
 ];
-export const STY = Object.fromEntries(STYLES.map((s) => [s.id, s])) as Record<string, Sty>;
+
+const dark = {...SG, bloom: {strength: 0.3, radius: 0.4, threshold: 0.9}, vignette: 0.35};
+
+/** round 2: six new worlds, each with its own characters, light and captions */
+export const WORLDS: Sty[] = [
+  {
+    id: 'bar', name: 'Dive Bar', fig: 'toon', env: 'bar',
+    look: {...dark, bg: {center: '#1a0c08', edge: '#050202', glow: '#5a2a10', glowAmt: 0.2}, bloom: {strength: 0.35, radius: 0.45, threshold: 0.95}, vignette: 0.5},
+    floor: ['#000000', '#000000'], pool: '#ffb86a', poolAmt: 0, cone: 0, grid: 0, crowd: '#000000', crowdAmt: 0,
+    steel: ['#2a1a10', '#0e0804'], top: ['#8a5a32', '#4a2a14'],
+    body: ['#f0e2cc', '#8a6248'], line: '#120806', lineW: 0.026, bands: true,
+    text: '#fff2e0', textShadow: '0 0 6px #ff3a6a, 0 0 22px #ff3a6a, 0 4px 18px rgba(0,0,0,0.9)', shadow: 0.9,
+    cap: {fontFamily: 'Sora', letterSpacing: '0.04em'},
+  },
+  {
+    id: 'colosseum', name: 'Colosseum at Sunset', fig: 'marble', env: 'colosseum',
+    look: {...dark, bg: {center: '#e0704a', edge: '#2a1a4a', glow: '#ffb46a', glowAmt: 0.2}, bloom: {strength: 0.3, radius: 0.5, threshold: 0.85}, vignette: 0.3},
+    floor: ['#000000', '#000000'], pool: '#ffd9a0', poolAmt: 0, cone: 0, grid: 0, crowd: '#000000', crowdAmt: 0,
+    steel: ['#d8c0a0', '#6a5038'], top: ['#e8d4b4', '#8a6a4a'],
+    body: ['#f6eee2', '#9a7a62'], line: '#000000', lineW: 0, bands: false,
+    text: '#fff4e0', textShadow: '0 3px 0 rgba(60,20,10,0.8), 0 0 26px rgba(255,170,90,0.6)', shadow: 0.7,
+    cap: {fontFamily: 'Fraunces', letterSpacing: '0.02em'},
+  },
+  {
+    id: 'rooftop', name: 'Rooftop City · 2D', fig: 'flat', env: 'rooftop',
+    look: {...dark, bg: {center: '#14204a', edge: '#030614', glow: '#3a2a5a', glowAmt: 0.2}, bloom: {strength: 0.5, radius: 0.5, threshold: 0.75}, vignette: 0.4},
+    floor: ['#000000', '#000000'], pool: '#ffffff', poolAmt: 0, cone: 0, grid: 0, crowd: '#000000', crowdAmt: 0,
+    steel: ['#5a6478', '#20242e'], top: ['#3a4252', '#181c24'],
+    body: ['#ffffff', '#ffffff'], line: '#05070d', lineW: 0, bands: true,
+    text: '#ffffff', textShadow: '0 3px 0 #000, 0 0 3px #000, 0 6px 22px rgba(0,0,0,0.9)', shadow: 0.7,
+  },
+  {
+    id: 'show', name: 'Game Show', fig: 'vinyl', env: 'show',
+    look: {...dark, bg: {center: '#7a1a8a', edge: '#2a0a4a', glow: '#ff4ab0', glowAmt: 0.2}, bloom: {strength: 0.45, radius: 0.45, threshold: 0.8}, vignette: 0.25},
+    floor: ['#000000', '#000000'], pool: '#ffffff', poolAmt: 0, cone: 0, grid: 0, crowd: '#000000', crowdAmt: 0,
+    steel: ['#ffffff', '#b8c0d8'], top: ['#ff4ab0', '#a01a6a'],
+    body: ['#ffffff', '#d0c2b2'], line: '#000000', lineW: 0, bands: false, tinted: true,
+    text: '#ffffff', textShadow: '0 3px 0 #6a0a4a', shadow: 0.6,
+    cap: {background: '#ff2a8a', padding: '10px 30px', borderRadius: 40, boxShadow: '0 6px 0 #8a0a4a, 0 10px 30px rgba(0,0,0,0.4)'},
+  },
+  {
+    id: 'paper', name: 'Paper Theatre · 2D', fig: 'paper', env: 'paper',
+    look: {...dark, bg: {center: '#f7dcae', edge: '#f3c98a', glow: '#ffffff', glowAmt: 0.1}, bloom: {strength: 0.05, radius: 0.3, threshold: 0.98}, vignette: 0.2},
+    floor: ['#000000', '#000000'], pool: '#ffffff', poolAmt: 0, cone: 0, grid: 0, crowd: '#000000', crowdAmt: 0,
+    steel: ['#6e4a32', '#3e2618'], top: ['#a47a52', '#6e4a2e'],
+    body: ['#ffffff', '#ffffff'], line: '#ffffff', lineW: 0, bands: false,
+    text: '#4a1e1a', textShadow: 'none', shadow: 0.35,
+    cap: {fontFamily: 'Fraunces', background: '#fff6e6', padding: '8px 28px', boxShadow: '4px 6px 0 rgba(90,40,20,0.35)', transform: 'rotate(-1.5deg)'},
+  },
+  {
+    id: 'comic', name: 'Comic Pop', fig: 'toon', env: 'comic',
+    look: {...dark, bg: {center: '#ffd22a', edge: '#ff9a1a', glow: '#ffffff', glowAmt: 0}, bloom: {strength: 0.0, radius: 0.3, threshold: 1}, vignette: 0.15},
+    floor: ['#000000', '#000000'], pool: '#ffffff', poolAmt: 0, cone: 0, grid: 0, crowd: '#000000', crowdAmt: 0,
+    steel: ['#2a2a2a', '#000000'], top: ['#3aa0ff', '#1a5aa0'],
+    body: ['#ffffff', '#ffc8b0'], line: '#000000', lineW: 0.04, bands: true,
+    text: '#000000', textShadow: 'none', shadow: 0.5,
+    cap: {background: '#ffffff', padding: '10px 26px', border: '6px solid #000', boxShadow: '8px 8px 0 #000', transform: 'skew(-6deg)'},
+  },
+];
+
+export const STY = Object.fromEntries([...STYLES, ...WORLDS].map((s) => [s.id, s])) as Record<string, Sty>;
 
 export const StyCtx = createContext<Sty>(STY.porcelain);
 export const useSty = () => useContext(StyCtx);

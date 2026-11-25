@@ -5,7 +5,7 @@ import {mixHex} from '../nc001-work-smart/world';
 import {add, HB, K3, mul, W3, type J3} from '../sg003-same-bar/rig3';
 import {CAST, TINTS} from './plan';
 import {solveR} from './rig';
-import type {Sty} from './styles';
+import {CLAY, type Sty} from './styles';
 
 /**
  * SG007: 2D characters over the 3D arena. The same 3D rig is solved, every joint is projected with this frame's camera,
@@ -35,6 +35,7 @@ export const FlatFigs: React.FC<{t: number; c: Cam; sty: Sty}> = ({t, c, sty}) =
     return {i, s, j, w, d};
   }).sort((a, b) => b.d - a.d);
   const ink = sty.fig === 'ink';
+  const paper = sty.fig === 'paper';
   return (
     <svg width={1080} height={1920} style={{position: 'absolute', left: 0, top: 0}}>
       <defs>
@@ -66,9 +67,9 @@ export const FlatFigs: React.FC<{t: number; c: Cam; sty: Sty}> = ({t, c, sty}) =
         const hr = HB.headR * K3 * k * 0.9;
         const tint = TINTS[i];
         const spent = s.spent;
-        const fill = ink ? mixHex('#1a1614', '#8a8070', spent * 0.6) : mixHex('#ffffff', '#9aa3b8', spent * 0.7);
-        const line = ink ? '#1a1614' : '#05070d';
-        const ow = ink ? 0 : Math.max(2.5, 0.026 * K3 * k);
+        const fill = paper ? mixHex(CLAY[i], '#b8a898', spent * 0.6) : ink ? mixHex('#1a1614', '#8a8070', spent * 0.6) : mixHex('#ffffff', '#9aa3b8', spent * 0.7);
+        const line = paper ? '#fffaf0' : ink ? '#1a1614' : '#05070d';
+        const ow = ink ? 0 : Math.max(2.5, (paper ? 0.04 : 0.026) * K3 * k);
         const core = P(add(j.chest, mul(j.fwd, 0.06)));
         const auraA = Math.min(1, s.aura);
         return (
@@ -81,6 +82,12 @@ export const FlatFigs: React.FC<{t: number; c: Cam; sty: Sty}> = ({t, c, sty}) =
                 <circle cx={hd[0]} cy={hd[1]} r={hr + 24} fill={i === 0 ? '#ff3a22' : s.auraColor} />
               </g>
             ) : null}
+            {paper ? (
+              <g transform={`translate(${0.03 * K3 * k}, ${0.045 * K3 * k})`} opacity={0.3}>
+                {L.map((l, n) => <line key={`sh${n}`} x1={l.a[0]} y1={l.a[1]} x2={l.b[0]} y2={l.b[1]} stroke="#4a2010" strokeWidth={l.r * 2 + ow * 2} strokeLinecap="round" />)}
+                <circle cx={hd[0]} cy={hd[1]} r={hr + ow} fill="#4a2010" />
+              </g>
+            ) : null}
             {ow > 0
               ? L.map((l, n) => <line key={`o${n}`} x1={l.a[0]} y1={l.a[1]} x2={l.b[0]} y2={l.b[1]} stroke={line} strokeWidth={l.r * 2 + ow * 2} strokeLinecap="round" />)
               : null}
@@ -90,7 +97,9 @@ export const FlatFigs: React.FC<{t: number; c: Cam; sty: Sty}> = ({t, c, sty}) =
             ))}
             <circle cx={hd[0]} cy={hd[1]} r={hr} fill={fill} />
             {/* the chest light (paper: a red mark on Ego only, a tint ring on the others) */}
-            {ink ? (
+            {paper ? (
+              <circle cx={core[0]} cy={core[1]} r={0.05 * K3 * k} fill="#fffaf0" />
+            ) : ink ? (
               <circle cx={core[0]} cy={core[1]} r={0.05 * K3 * k} fill={i === 0 ? '#d8261a' : 'none'} stroke={i === 0 ? 'none' : tint} strokeWidth={0.018 * K3 * k} />
             ) : (
               <>
