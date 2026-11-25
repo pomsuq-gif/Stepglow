@@ -132,6 +132,8 @@ export type Look3 = {
   armMat?: [Mat | null, Mat | null];
   /** material of a forearm only (SG004: the red-hot forearms of the hurt Ego) */
   foreMat?: [Mat | null, Mat | null];
+  /** SG006: foreMat runs along the forearm (elbow → hand) instead of by world height: stained toward the hands */
+  foreDip?: boolean;
   cracks?: number;
   crackMat?: Mat;
   stumpMat?: Mat;
@@ -168,7 +170,11 @@ export const Man: React.FC<{j: J3; root: V3; k: number; l: Look3; body?: Body; c
           ) : (
             <>
               <Limb a={j.sh[i]} b={j.el[i]} r0={b.ar[0]} r1={b.ar[1]} m={l.armMat?.[i] ?? l.body} y0={y0} y1={y1} />
-              <Limb a={j.el[i]} b={j.hd[i]} r0={b.ar[1]} r1={b.ar[2]} m={l.foreMat?.[i] ?? l.armMat?.[i] ?? l.body} y0={y0} y1={y1} />
+              {l.foreDip && l.foreMat?.[i] ? (
+                <Limb a={j.el[i]} b={j.hd[i]} r0={b.ar[1]} r1={b.ar[2]} m={l.foreMat[i]!} y0={b.fore * 0.45} y1={b.fore * 1.02} local />
+              ) : (
+                <Limb a={j.el[i]} b={j.hd[i]} r0={b.ar[1]} r1={b.ar[2]} m={l.foreMat?.[i] ?? l.armMat?.[i] ?? l.body} y0={y0} y1={y1} />
+              )}
             </>
           )}
         </React.Fragment>

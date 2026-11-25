@@ -253,7 +253,7 @@ export const SG006Full: React.FC<{withAudio?: boolean}> = ({withAudio = true}) =
   const t = frame / fps;
   const c = cam(t);
   const storm = t > T.storm - 1 && t < T.ignite ? 1 : 0;
-  const flash = 0.22 * lightning(t) * storm + 0.75 * hit(t, T.ignite - 0.02, 4.5);
+  const flash = 0.13 * lightning(t) * storm + 0.75 * hit(t, T.ignite - 0.02, 4.5);
   const gold = t > T.ignite - 0.1;
   return (
     <AbsoluteFill style={{background: SG.bg.edge}}>

@@ -414,10 +414,19 @@ export const obsession = (t: number): State => {
   const i = 2;
   // the lean follows the effort smoothly (sample a little back in time)
   const eff = (obsRate(t) + obsRate(t - 0.15) + obsRate(t - 0.3)) / 3;
-  const o: WalkOpts = {lean: lerp(38, 22, eff), crouch: lerp(0.2, 0.13, eff), sway: lerp(1.2, 0.5, eff), narrow: true, head: [0, lerp(-0.07, 0.0, eff), 0.05], lift: lerp(1.15, 1.3, eff)};
+  const cracks = ss(t, B(12), B(26));
+  // spent: heavy breathing in the slow phases (the chest heaves), the head hangs
+  const tired = (1 - eff) * ss(t, B(2), B(4));
+  const breath = Math.sin(t * Math.PI * 2 * 1.7) * tired;
+  const o: WalkOpts = {lean: lerp(38, 22, eff) + 4 * breath, crouch: lerp(0.2, 0.13, eff) + 0.02 * breath, sway: lerp(1.2, 0.5, eff), narrow: true, head: [0, lerp(-0.08, 0.0, eff) - 0.02 * tired, 0.05 + 0.02 * tired], lift: lerp(1.15, 1.3, eff)};
   const n = NO(t);
   const rig = carry(t < T.go ? intro(t, o) : walk(n, o));
-  const cracks = ss(t, B(12), B(26));
+  // the hands shake on the stone, worse as they bleed
+  const sh = 0.006 + 0.012 * cracks;
+  rig.hand = [
+    add(rig.hand[0], [sh * Math.sin(t * 47), sh * Math.sin(t * 59 + 1), sh * 0.6 * Math.sin(t * 41 + 2)]),
+    add(rig.hand[1], [sh * Math.sin(t * 53 + 3), sh * Math.sin(t * 43 + 4), sh * 0.6 * Math.sin(t * 61 + 5)]),
+  ];
   return {rig, energy: 1.2 + 0.15 * Math.sin(t * 9) * eff, tint: mixHex(TINT.obs, TINT.hot, 0.35 * cracks), z: XSZ(rig), y: rig.pel[1] * K3, stone: {p: lw(rig, i)(backStone(rig)), rot: 0, on: true}, spent: 0, cracks, label: 1};
 };
 
@@ -464,7 +473,7 @@ export const discipline = (t: number): State => {
     } else {
       const free = holdAt(body, stoneL);
       const rest = walk(N + 0.75, {lean: 4, crouch: 0.06});
-      const restH: Rig = {...rest, hand: [add(rest.pel, [-0.2, -0.02, 0.1]), add(stoneL, [0.0, SRL * 0.95, -0.05])], elbow: [[-1, -0.3, 0.3], [1, -0.2, 0.3]]};
+      const restH: Rig = {...rest, hand: [add(rest.pel, [-0.24, -0.28, 0.06]), add(stoneL, [0.0, SRL * 0.95, -0.05])], elbow: [[-1, -0.3, 0.3], [1, -0.2, 0.3]]};
       rig = mixRig(free, restH, ss(t, T.place + 0.05, T.place + 0.7));
     }
   }

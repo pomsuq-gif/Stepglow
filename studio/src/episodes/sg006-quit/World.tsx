@@ -1,13 +1,13 @@
 import React, {useEffect, useMemo} from 'react';
 import * as THREE from 'three';
 import {clamp, fract, rnd, ss} from '../nc001-work-smart/anim';
-import {Ball, Glow, Limb, Part, useLook, type Cam, type V3} from '../nc001-work-smart/kit3d';
+import {Ball, Glow, light, Limb, makeCamera, Part, useLook, type Cam, type V3} from '../nc001-work-smart/kit3d';
 import {mat, type Mat} from '../nc001-work-smart/looks';
 import {mixHex} from '../nc001-work-smart/world';
 import {add, HB, K3, Man, W3, type Look3} from '../sg003-same-bar/rig3';
 import {BurstFx, Crown, GOLD, Puff, redHot, Ring, spentMat, type Burst} from '../sg005-top/World';
 import {hit, hits, beat} from './grid';
-import {CAST, D, N, NARROW, NO, PL, R, solveC, SR, STAIR_W, T, TINT, TOP_Y, treadY, treadZ, XS, type State} from './plan';
+import {CAST, D, groundAt, N, NARROW, NO, PL, R, solveC, SR, STAIR_W, T, TINT, TOP_Y, treadY, treadZ, XS, type State} from './plan';
 
 const B = beat;
 const q = (x: number, n = 16) => Math.round(clamp(x) * n) / n;
@@ -53,7 +53,7 @@ void main(){
     col += uLaneC[i] * g * lane * top * 0.07 * uLaneE[i] * (0.65 + 0.35 * tex);
     col += uLaneC[i] * g * lane * (1.0 - top) * (1.0 - side) * 0.025 * uLaneE[i];
   }
-  col *= 1.0 + uFlash * 5.0;
+  col *= 1.0 + uFlash * 2.5;
   col += vec3(0.04, 0.05, 0.09) * uFlash * top;
   gl_FragColor = vec4(col, 1.0);
 }`;
@@ -343,60 +343,120 @@ const BANKS = Array.from({length: 26}, (_, i) => ({
   v: 0.2 + 0.4 * rnd(i + 25),
   storm: rnd(i + 26) > 0.35,
 }));
-const Clouds: React.FC<{t: number; storm: number; clear: number}> = ({t, storm, clear}) => (
+const Clouds: React.FC<{t: number; storm: number; clear: number; q: THREE.Quaternion}> = ({t, storm, clear, q}) => (
   <>
     {BANKS.map((c, i) => {
       const a = (c.storm ? storm : 0.35) * (1 - clear * 0.85);
       if (a < 0.02) return null;
       const x = ((c.x + c.v * t * (1 + 2.5 * storm) + 9) % 18 + 18) % 18 - 9;
-      return <Puff key={i} p={[x, c.y + 0.3 * Math.sin(t * 0.3 + i), c.z]} w={c.w} h={c.w * 0.35} color={c.storm ? '#2e3650' : '#283048'} a={0.55 * a} seed={i * 1.7} />;
+      return <BPuff key={i} p={[x, c.y + 0.3 * Math.sin(t * 0.3 + i), c.z]} w={c.w} h={c.w * 0.4} color={c.storm ? '#2e3650' : '#283048'} a={0.5 * a} seed={i * 1.7} q={q} />;
     })}
   </>
 );
 
-/** driving snow around the camera's point of interest */
-const Snow: React.FC<{t: number; amt: number; c: V3}> = ({t, amt, c}) => {
+/** driving snow: soft round flakes as one point cloud, anchored in the world (the camera moves through them), wind from +x */
+const FLAKES = 520;
+const FLAKE_VERT = /* glsl */ `attribute float aSize; attribute float aA; varying float vA; uniform float uScale;
+void main(){ vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_PointSize = aSize * uScale / -mv.z; vA = aA; gl_Position = projectionMatrix * mv; }`;
+const FLAKE_FRAG = /* glsl */ `varying float vA; uniform float uAmt;
+void main(){ vec2 p = gl_PointCoord - 0.5; float d = length(p) * 2.0; float a = (1.0 - smoothstep(0.25, 1.0, d)) * vA * uAmt; gl_FragColor = vec4(vec3(0.86, 0.9, 1.0) * a, a); }`;
+const BOX: V3 = [12, 9, 12];
+const Snow: React.FC<{t: number; amt: number; c: V3; scale: number}> = ({t, amt, c, scale}) => {
+  const {geo, material} = useMemo(() => {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(FLAKES * 3), 3));
+    g.setAttribute('aSize', new THREE.BufferAttribute(Float32Array.from({length: FLAKES}, (_, i) => 0.035 + 0.06 * rnd(i + 7) ** 2), 1));
+    g.setAttribute('aA', new THREE.BufferAttribute(Float32Array.from({length: FLAKES}, (_, i) => 0.45 + 0.55 * rnd(i + 8)), 1));
+    const m = new THREE.ShaderMaterial({vertexShader: FLAKE_VERT, fragmentShader: FLAKE_FRAG, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, uniforms: {uScale: {value: 1}, uAmt: {value: 0}}});
+    return {geo: g, material: m};
+  }, []);
+  useEffect(
+    () => () => {
+      geo.dispose();
+      material.dispose();
+    },
+    [geo, material],
+  );
+  const pos = geo.attributes.position as THREE.BufferAttribute;
+  const wrap = (v: number, lo: number, size: number) => lo + ((((v - lo) % size) + size) % size);
+  for (let i = 0; i < FLAKES; i++) {
+    // wind from +x to −x, falling, with a slow swirl; speeds vary per flake
+    const sp = 0.7 + 0.6 * rnd(i + 1);
+    const x0 = rnd(i + 2) * BOX[0];
+    const y0 = rnd(i + 3) * BOX[1];
+    const z0 = rnd(i + 4) * BOX[2];
+    const sw = Math.sin(t * (0.9 + rnd(i + 5)) + i) * 0.35;
+    pos.setXYZ(
+      i,
+      wrap(x0 - t * 3.2 * sp + sw, c[0] - BOX[0] / 2, BOX[0]),
+      wrap(y0 - t * 1.5 * sp, c[1] - BOX[1] / 2, BOX[1]),
+      wrap(z0 + Math.cos(t * 0.7 + i) * 0.3, c[2] - BOX[2] / 2, BOX[2]),
+    );
+  }
+  pos.needsUpdate = true;
+  material.uniforms.uScale.value = scale;
+  material.uniforms.uAmt.value = amt;
+  if (amt < 0.02) return null;
+  return <points geometry={geo} material={material} renderOrder={9} frustumCulled={false} />;
+};
+
+/** a soft cloud card that always faces the camera */
+const BPuff: React.FC<{p: V3; w: number; h: number; color: string; a: number; seed: number; q: THREE.Quaternion}> = ({p, w, h, color, a, seed, q}) => {
+  const material = useMemo(() => new THREE.ShaderMaterial({vertexShader: PUFF_VERT, fragmentShader: PUFF_FRAG, transparent: true, depthWrite: false, uniforms: {uC: {value: new THREE.Color()}, uA: {value: 0}, uSeed: {value: 0}}}), []);
+  useEffect(() => () => material.dispose(), [material]);
+  (material.uniforms.uC.value as THREE.Color).set(color);
+  material.uniforms.uA.value = a;
+  material.uniforms.uSeed.value = seed;
+  return <mesh geometry={cardPlane} material={material} position={p} quaternion={q} scale={[w, h, 1]} renderOrder={6} />;
+};
+const PUFF_VERT = /* glsl */ `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`;
+const PUFF_FRAG = /* glsl */ `uniform vec3 uC; uniform float uA, uSeed; varying vec2 vUv;
+float h(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233)) + uSeed) * 43758.5453); }
+float n(vec2 p){ vec2 i = floor(p), f = fract(p); f = f*f*(3.0-2.0*f); return mix(mix(h(i), h(i+vec2(1,0)), f.x), mix(h(i+vec2(0,1)), h(i+vec2(1,1)), f.x), f.y); }
+void main(){
+  vec2 p = (vUv - 0.5) * 2.0;
+  float d = length(p) + (n(vUv * 4.0 + uSeed) - 0.5) * 0.45 + (n(vUv * 10.0 - uSeed) - 0.5) * 0.15;
+  float a = uA * (1.0 - smoothstep(0.2, 1.0, d));
+  gl_FragColor = vec4(uC, a);
+}`;
+
+/** spindrift: thin torn veils of snow streaming past at the climbers' height in the storm */
+const DRIFT = Array.from({length: 9}, (_, i) => ({y: -0.4 + rnd(i + 61) * 2.2, z: (rnd(i + 62) - 0.5) * 5, w: 2.5 + 2.5 * rnd(i + 63), v: 2.6 + 1.6 * rnd(i + 64), ph: rnd(i + 65) * 14}));
+const Spindrift: React.FC<{t: number; amt: number; c: V3; q: THREE.Quaternion}> = ({t, amt, c, q}) => {
   if (amt < 0.02) return null;
   return (
     <>
-      {Array.from({length: 110}, (_, i) => {
-        const sp = 2.5 + 2.5 * rnd(i + 1);
-        const ph = fract(t * sp * 0.18 + rnd(i + 2));
-        const x = c[0] + 4.5 - ph * 9 + (rnd(i + 3) - 0.5) * 2;
-        const y = c[1] + 4 - fract(rnd(i + 4) + t * 0.11 * sp) * 8;
-        const z = c[2] + (rnd(i + 5) - 0.5) * 5;
-        const s = 0.025 + 0.03 * rnd(i + 6);
-        return <Glow key={i} p={[x, y, z]} w={s * 9} h={s} color="#dfe8ff" a={0.7 * amt * Math.sin(Math.PI * ph)} mode="line" rot={-14} />;
+      {DRIFT.map((d, i) => {
+        const u = (((d.ph - t * d.v) % 14) + 14) % 14;
+        const x = c[0] + 7 - u;
+        const a = 0.16 * amt * Math.sin((Math.PI * u) / 14);
+        return <BPuff key={i} p={[x, c[1] + d.y, c[2] + d.z]} w={d.w} h={d.w * 0.22} color="#a9b6d6" a={a} seed={i * 3.1} q={q} />;
       })}
     </>
   );
 };
 
-/** a jagged bolt from the sky, regenerated per strike */
+/** a jagged bolt from the sky (3D, so it reads from any side), regenerated per strike */
+const BOLT = light('#eef3ff', 2.4);
 const Bolt: React.FC<{t: number; at: number; p: V3; len: number; seed: number}> = ({t, at, p, len, seed}) => {
   const dt = t - at;
-  if (dt < 0 || dt > 0.32) return null;
-  const a = (dt < 0.06 ? 1 : dt < 0.1 ? 0.35 : dt < 0.14 ? 0.9 : 1 - (dt - 0.14) / 0.18) * 1;
+  if (dt < 0 || dt > 0.28) return null;
+  const on = dt < 0.07 || (dt > 0.11 && dt < 0.2);
+  if (!on) return null;
   const pts: V3[] = [];
   let x = p[0];
-  for (let k = 0; k <= 12; k++) {
-    pts.push([x, p[1] - (len * k) / 12, p[2]]);
-    x += (rnd(seed + k) - 0.5) * 1.4;
+  let z = p[2];
+  for (let k = 0; k <= 14; k++) {
+    pts.push([x, p[1] - (len * k) / 14, z]);
+    x += (rnd(seed + k) - 0.5) * 1.6;
+    z += (rnd(seed + k + 50) - 0.5) * 0.8;
   }
   return (
     <>
-      {pts.slice(0, -1).map((q0, k) => {
-        const q1 = pts[k + 1];
-        const mid: V3 = [(q0[0] + q1[0]) / 2, (q0[1] + q1[1]) / 2, q0[2]];
-        const L = Math.hypot(q1[0] - q0[0], q1[1] - q0[1]);
-        const ang = (Math.atan2(q1[1] - q0[1], q1[0] - q0[0]) * 180) / Math.PI;
-        return (
-          <React.Fragment key={k}>
-            <Glow p={mid} w={L * 1.25} h={0.22} color="#ffffff" a={a} mode="line" rot={ang} />
-            <Glow p={mid} w={L * 1.4} h={1.4} color="#8fb0ff" a={0.35 * a} mode="line" rot={ang} />
-          </React.Fragment>
-        );
-      })}
+      {pts.slice(0, -1).map((q0, k) => (
+        <Limb key={k} a={q0} b={pts[k + 1]} r0={0.05} r1={0.05} m={BOLT} y0={0} y1={1} />
+      ))}
+      <Glow p={pts[5]} w={9} h={14} color="#9fb8ff" a={0.25} />
     </>
   );
 };
@@ -415,14 +475,15 @@ export const World: React.FC<{t: number; cam: Cam}> = ({t, cam}) => {
   const w = (i: number, p: V3) => W3(p, roots[i], K3);
   const spentQ = st.map((s) => q(s.spent));
   const crackQ = q(st[2].cracks ?? 0);
+  const bloodQ = q(ss(t, B(8), B(22)), 12);
   const mats = useMemo(
     () => ({
       sp: spentQ.map((k) => spentMat(k)),
-      crack: mat('#fff0d0', '#ff5a20', {shade: '#a01a08', rim: '#ffd0a0', rimAmt: 0.6, wrap: 1, emit: 1.6}),
-      fore: redHot(0.55 * crackQ),
+      crack: mat('#d8382a', '#7a0a0a', {shade: '#3a0404', rim: '#ff8a70', rimAmt: 0.4, wrap: 1, emit: 1.05}),
+      fore: bloodArm(bloodQ),
       hot: mat('#fff6c8', '#ffb23a', {shade: '#b8621a', rim: '#fffbe6', rimAmt: 0.8, rimPow: 2, wrap: 0.9, emit: 1.35}),
     }),
-    [spentQ.join(','), crackQ],
+    [spentQ.join(','), crackQ, bloodQ],
   );
   const storm = ss(t, T.storm - 1.4, T.storm) * (1 - ss(t, T.ignite, T.ignite + 2.2));
   const clear = ss(t, T.ignite, T.ignite + 2.2);
@@ -437,6 +498,8 @@ export const World: React.FC<{t: number; cam: Cam}> = ({t, cam}) => {
   const lanes: Lanes = st.map((s, i) => ({n: i === 0 ? Math.min(12, Math.max(0, s.z / D + 1.2)) : Math.max(0, s.z / D + 1.2), c: s.tint, e: Math.min(1.2, s.energy) * (i === 2 ? 1 : 1)}));
   const crowd = 1 - ss(t, T.crowdOff, T.crowdOff + 1.6);
   const cyz: V3 = [cam.cx ?? 0, cam.cy, cam.cz ?? 0];
+  const camObj = makeCamera(cam);
+  const camQ = camObj.quaternion.clone();
   const bursts: Burst[] = [
     // the weight lands: dust at every pair of feet
     ...XS.map((x, i): Burst => ({at: T.slam, p: [x, 0.05, 0.1], n: 14, speed: 0.9, color: '#8e9ab8', life: 0.7, seed: 11 + i * 17, up: 0.2, g: 2, size: 0.08})),
@@ -457,7 +520,7 @@ export const World: React.FC<{t: number; cam: Cam}> = ({t, cam}) => {
   return (
     <>
       <Ranges flash={flash} />
-      <Clouds t={t} storm={storm} clear={clear} />
+      <Clouds t={t} storm={storm} clear={clear} q={camQ} />
       <Base flash={flash} crowd={crowd} />
       {crowd > 0 || t < T.crowdOff + 2 ? <Crowd t={t} /> : null}
       <Stair lights={lights} lanes={lanes} flash={flash} snow={0.4 + 0.6 * storm} />
@@ -477,7 +540,8 @@ export const World: React.FC<{t: number; cam: Cam}> = ({t, cam}) => {
           energy: Math.min(1.4, s.energy),
           cracks: i === 2 ? crackQ : undefined,
           crackMat: mats.crack,
-          foreMat: i === 2 && crackQ > 0 ? [mats.fore, mats.fore] : undefined,
+          foreMat: i === 2 && bloodQ > 0 ? [mats.fore, mats.fore] : undefined,
+          foreDip: i === 2,
         };
         const c = w(i, j.chest);
         if (Math.abs(c[2] - (cam.cz ?? 0)) > 40) return null;
@@ -487,6 +551,7 @@ export const World: React.FC<{t: number; cam: Cam}> = ({t, cam}) => {
             <Man j={j} root={roots[i]} k={K3} l={l} body={HB}>
               {i === 1 ? <Crown j={j} /> : null}
             </Man>
+            {i === 2 ? <Streaks j={j} k={bloodQ} /> : null}
             <Stone i={i} s={s.stone} t={t} mats={mats} />
           </React.Fragment>
         );
@@ -500,7 +565,9 @@ export const World: React.FC<{t: number; cam: Cam}> = ({t, cam}) => {
           return <Puff key={`${i}-${k}`} p={[p[0] + (rnd(k + i * 9) - 0.5) * 0.8 * e, p[1] - SR + 0.1 + e * 0.35 * rnd(k + 3), p[2] + 0.1 + 0.02 * k]} w={0.5 + e * 0.9} h={0.35 + e * 0.5} color="#6c748c" a={0.55 * (1 - clamp(dt / 1.6))} seed={k * 2.3} />;
         });
       })}
-      <Snow t={t} amt={storm} c={cyz} />
+      <Blood t={t} cz={cam.cz ?? 0} />
+      <Snow t={t} amt={storm} c={cyz} scale={1920 * 0.5 / Math.tan((camObj.fov * Math.PI) / 360) / 1.0} />
+      <Spindrift t={t} amt={storm} c={cyz} q={camQ} />
       {STRIKES.map((s, k) => (
         <Bolt key={k} t={t} at={s} p={[(k % 2 ? 1 : -1) * (4 + 3 * rnd(k + 40)), st[2].y + 14, st[2].z + 10 + 8 * rnd(k + 41)]} len={16} seed={k * 13 + 7} />
       ))}
@@ -523,6 +590,70 @@ export const World: React.FC<{t: number; cam: Cam}> = ({t, cam}) => {
         : null}
     </>
   );
+};
+
+/** porcelain stained toward the hands: dried and fresh blood, wet sheen, no glow */
+const bloodArm = (k: number): Mat =>
+  mat(mixHex('#ffffff', '#8a0d13', k), mixHex('#eef2fa', '#e6d2d6', k * 0.5), {shade: mixHex('#56688f', '#3a0609', k * 0.8), rim: mixHex('#dcebff', '#ffb4a6', k), rimAmt: 0.45, rimPow: 2.4, wrap: 0.75, spec: 0.35 + 0.65 * k, emit: 0.96 - 0.12 * k});
+/** thin runs of blood down the forearm from the hand */
+const Streaks: React.FC<{j: ReturnType<typeof solveC>; k: number}> = ({j, k}) => {
+  if (k < 0.15) return null;
+  const out: React.ReactNode[] = [];
+  for (const i of [0, 1]) {
+    const e = W3(j.el[i], [XS[2], 0, 0], K3);
+    const h = W3(j.hd[i], [XS[2], 0, 0], K3);
+    const ax: V3 = [e[0] - h[0], e[1] - h[1], e[2] - h[2]];
+    const L = Math.hypot(...ax);
+    const u: V3 = [ax[0] / L, ax[1] / L, ax[2] / L];
+    // two directions around the forearm
+    const ref: V3 = Math.abs(u[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0];
+    const v = norm3(cross3(u, ref));
+    const w = cross3(u, v);
+    [[0.6, 0.55], [2.4, 0.38], [4.2, 0.46]].forEach(([ang, len], m) => {
+      const r = HB.ar[2] * K3 * 0.98;
+      const off: V3 = [(v[0] * Math.cos(ang) + w[0] * Math.sin(ang)) * r, (v[1] * Math.cos(ang) + w[1] * Math.sin(ang)) * r, (v[2] * Math.cos(ang) + w[2] * Math.sin(ang)) * r];
+      const a: V3 = [h[0] + off[0], h[1] + off[1], h[2] + off[2]];
+      const l = L * len * clamp(k * 1.3);
+      out.push(<Limb key={`${i}-${m}`} a={a} b={[a[0] + u[0] * l, a[1] + u[1] * l, a[2] + u[2] * l]} r0={0.0085} r1={0.004} m={BLOOD} y0={0} y1={1} />);
+    });
+  }
+  return <>{out}</>;
+};
+const cross3 = (a: V3, b: V3): V3 => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+const norm3 = (a: V3): V3 => {
+  const l = Math.hypot(...a) || 1;
+  return [a[0] / l, a[1] / l, a[2] / l];
+};
+const BLOOD = mat('#7a0c10', '#4a0508', {shade: '#1a0204', rim: '#ff8a7a', rimAmt: 0.4, rimPow: 2.2, wrap: 0.6, spec: 1, emit: 0.75});
+const discGeo = new THREE.CircleGeometry(1, 18).rotateX(-Math.PI / 2);
+/** drops fall from Obsession's hands and stay on the treads behind him */
+const DROP_DT = 0.34;
+const Blood: React.FC<{t: number; cz: number}> = ({t, cz}) => {
+  const t0 = B(14);
+  if (t < t0) return null;
+  const n = Math.floor((t - t0) / DROP_DT);
+  const out: React.ReactNode[] = [];
+  for (let i = 0; i <= n; i++) {
+    const ts = t0 + i * DROP_DT + rnd(i + 300) * 0.12;
+    if (ts > t) continue;
+    const s = CAST[2](ts);
+    const j = solveC(s.rig);
+    const hp = W3(j.hd[i % 2], [XS[2], 0, 0], K3);
+    const p0: V3 = [hp[0] + (rnd(i + 301) - 0.5) * 0.05, hp[1] - 0.05, hp[2] - 0.02];
+    if (Math.abs(p0[2] - cz) > 14) continue;
+    const g = groundAt(p0[2], true);
+    const fall = Math.sqrt((2 * Math.max(0.01, p0[1] - g)) / 9.8);
+    const dt = t - ts;
+    if (dt < fall) {
+      const y = p0[1] - 0.5 * 9.8 * dt * dt;
+      out.push(<Ball key={i} p={[p0[0], y, p0[2]]} r={0.014} s={[1, 1.6, 1]} m={BLOOD} y0={0} y1={1} />);
+    } else {
+      const r = 0.026 + 0.03 * rnd(i + 302);
+      const grow = clamp((dt - fall) / 0.12);
+      out.push(<Part key={i} geo={discGeo} m={BLOOD} y0={0} y1={1} position={[p0[0], g + 0.004, p0[2]]} scale={[r * (0.5 + 0.5 * grow), 1, r * (0.4 + 0.6 * grow) * 0.85]} />);
+    }
+  }
+  return <>{out}</>;
 };
 
 export {treadZ, GOLD, NO};
