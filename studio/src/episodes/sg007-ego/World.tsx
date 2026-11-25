@@ -318,7 +318,7 @@ const Shadows: React.FC<{j: J3; amp: number}> = ({j, amp}) => (
 /* ───────────── the aura: flames licking up off the body ───────────── */
 
 const AURA_N = 64;
-const Aura: React.FC<{t: number; j: J3; amt: number; color: string; seed: number}> = ({t, j, amt, color, seed}) => {
+export const Aura: React.FC<{t: number; j: J3; amt: number; color: string; seed: number}> = ({t, j, amt, color, seed}) => {
   if (amt < 0.02) return null;
   const segs = SEGS(j).slice(0, 9);
   const hot = mixHex(color, '#ffffff', 0.55);
@@ -369,7 +369,7 @@ const crackMat = (heat: number) => {
   if (!crackMats.has(k)) crackMats.set(k, mat(mixHex('#05060a', '#ffd0a0', k), mixHex('#05060a', '#ff3a1e', k), {shade: mixHex('#000000', '#ff2a10', k), rim: mixHex('#2a3550', '#ffb080', k), rimAmt: 0.4, wrap: 1, emit: 1 + 1.2 * k}));
   return crackMats.get(k)!;
 };
-const Cracks: React.FC<{c: V3; seed: number; n: number; len: number; grow: number; heat: number; t: number}> = ({c, seed, n, len, grow, heat, t}) => {
+export const Cracks: React.FC<{c: V3; seed: number; n: number; len: number; grow: number; heat: number; t: number}> = ({c, seed, n, len, grow, heat, t}) => {
   const lines = useMemo(() => crackLines(c, seed, n, len), [c[0], c[2], seed, n, len]);
   if (grow <= 0.01) return null;
   const m = crackMat(heat);

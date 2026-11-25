@@ -1,13 +1,13 @@
 import React from 'react';
 import {AbsoluteFill, Audio, staticFile, useCurrentFrame, useVideoConfig} from 'remotion';
 import {clamp, easeInOut, lerp, seg, ss} from '../nc001-work-smart/anim';
-import {type Cam, project, Stage} from '../nc001-work-smart/kit3d';
+import {type Cam, project, Stage, type V3} from '../nc001-work-smart/kit3d';
 import {Watermark} from '../../channels/stepglow/Brand';
 import {SG} from '../sg002-start-small/look';
 import {K3, W3} from '../sg003-same-bar/rig3';
 import {hit, K, SECONDS, shake} from './grid';
 import {CAST, TINT, tw, WALL} from './plan';
-import {solveR} from './rig';
+import {clasp, PIN, solveR} from './rig';
 import {World} from './World';
 import {FlatFigs} from './flat2d';
 import {STY, StyCtx, type Sty} from './styles';
@@ -34,44 +34,94 @@ const on = (i: number, o: Partial<C> & {dx?: number; dz?: number} = {}): C => {
 };
 const egoAt = (t: number) => W3(solveR(CAST[0](t).rig).chest, [0, 0, 0], K3);
 
-/** the shots, cut on the reference's beats; each one moves from a to b */
-const SHOTS: [number, C, C][] = [
-  [0, {...on(0, {dx: 0.4, dz: -3.2}), viewH: 8.2, cy: 1.6, pitch: 12, yaw: -24, fov: 38, roll: -2}, {...on(0, {dx: 0.3, dz: -2.4}), viewH: 6.6, cy: 1.3, pitch: 12, yaw: -18, fov: 38, roll: -1}],
-  [K.t1, on(0, {viewH: 4.3, yaw: -22, roll: -2, cy: 0.85}), on(0, {viewH: 3.8, yaw: -10, roll: 1, cy: 0.85})],
-  [K.w1, on(0, {viewH: 2.9, dx: -0.6, yaw: -8, pitch: 6, cy: 0.9}), on(0, {viewH: 3.6, dx: -0.4, dz: -0.9, yaw: -14, pitch: 9, cy: 0.9})],
-  [K.t2, on(1, {viewH: 3.3, yaw: 18, roll: 2}), on(1, {viewH: 2.9, yaw: 8, roll: 0})],
-  [K.w2, on(1, {viewH: 3.4, dx: 0.3, yaw: 26, pitch: 7, cy: 0.75}), on(1, {viewH: 3.8, dx: 0.1, dz: -0.6, yaw: 18, pitch: 10, cy: 0.8})],
-  [K.t3, on(2, {viewH: 3.3, yaw: -20}), on(2, {viewH: 2.9, yaw: -12})],
-  [K.losing, on(2, {viewH: 4.1, yaw: -34, pitch: 6, cy: 0.85, roll: 5}), on(2, {viewH: 3.7, yaw: -28, pitch: 5, cy: 0.85, roll: 7})],
-  [K.w3, on(2, {viewH: 3.0, dx: -0.6, yaw: -10, pitch: -9, cy: 1.15, roll: -5}), on(2, {viewH: 3.3, dx: -0.6, yaw: -16, pitch: -7, cy: 1.15, roll: -3})],
-  [K.dark, {...on(2, {dx: 0.4, dz: -1.6}), viewH: 6.2, cy: 0.9, pitch: 18, yaw: -14, fov: 32, roll: 0}, {...on(2, {dx: 0.4, dz: -2.0}), viewH: 5.4, cy: 0.9, pitch: 15, yaw: -10, fov: 32, roll: 0}],
-  [K.t4, on(3, {viewH: 3.2, yaw: -18}), on(3, {viewH: 2.9, yaw: -6})],
-  [K.never, on(3, {viewH: 3.2, yaw: 34, pitch: 5, roll: -5, dx: 0.1}), on(3, {viewH: 3.0, yaw: 28, pitch: 4, roll: -7, dx: 0.1})],
-  [K.wont, on(3, {viewH: 3.1, yaw: -34, pitch: 5, roll: 6, dx: -0.1}), on(3, {viewH: 2.9, yaw: -28, pitch: 4, roll: 8, dx: -0.1})],
-  [K.broke, on(3, {viewH: 4.5, yaw: 8, pitch: 13, cy: 0.75, dx: 0.35}), on(3, {viewH: 4.8, yaw: 12, pitch: 14, cy: 0.75, dx: 0.4})],
-  [K.s4, on(3, {viewH: 3.3, yaw: 22, pitch: 8, cy: 0.8, dx: 0.2}), on(3, {viewH: 3.5, yaw: 16, pitch: 9, cy: 0.85})],
-  [K.t5, on(4, {viewH: 3.8, yaw: -8, pitch: 10, dx: -0.3}), on(4, {viewH: 3.3, yaw: -4, pitch: 10, dx: -0.2})],
-  [K.sure, on(4, {viewH: 3.0, yaw: -22, pitch: 8}), on(4, {viewH: 2.7, yaw: -18, pitch: 7, roll: 2})],
-  [K.seen, on(4, {viewH: 3.2, yaw: 26, pitch: 6, dx: 0.1}), on(4, {viewH: 2.8, yaw: 18, pitch: 5, dx: 0.1})],
-  [K.slam, {...on(4, {dx: -1.45, dz: 0.2}), viewH: 5.8, cy: 1.0, pitch: 8, yaw: 4, fov: 34, roll: 0}, {...on(4, {dx: -1.55, dz: 0.2}), viewH: 5.4, cy: 0.95, pitch: 8, yaw: 8, fov: 34, roll: 0}],
-  [K.blink, {viewH: 3.0, cx: WALL.x * K3 + 0.5, cy: 0.62, cz: WALL.z * K3, pitch: 10, yaw: 80, fov: 30, roll: 0}, {viewH: 2.7, cx: WALL.x * K3 + 0.45, cy: 0.62, cz: WALL.z * K3, pitch: 9, yaw: 72, fov: 30, roll: 0}],
-  [K.all, {viewH: 6.4, cx: 0.9, cy: 0.7, cz: -5.6, pitch: 14, yaw: -30, fov: 34, roll: 0}, {viewH: 7.4, cx: 0.8, cy: 0.8, cz: -6.0, pitch: 17, yaw: -40, fov: 34, roll: 0}],
+/**
+ * The camera, as in the reference: one take that follows Ego. It settles on the table while he fights (pushing in
+ * as the fight gets harder), drifts with him when he walks to the next one, and holds on every win so the hand is
+ * seen going all the way down. Its own shots only where the reference cuts: the lights going out, the flight,
+ * the board, the closing crane.
+ */
+const FIGHTS: [number, number, number][] = [
+  [1.45, K.w1 + 0.95, 0],
+  [6.35, K.w2 + 0.95, 1],
+  [10.5, K.w3 + 1.05, 2],
+  [18.2, K.broke + 1.0, 3],
+  [26.45, K.slam + 0.2, 4],
 ];
-const SHOT_END = SECONDS;
+const egoPel = (t: number): V3 => {
+  const r = CAST[0](t).rig.pel;
+  return [r[0] * K3, 0, r[2] * K3];
+};
+/** where the follow camera looks, and how tight, before smoothing */
+const rawFollow = (t: number): [V3, number] => {
+  const e = egoPel(t);
+  let w = 0;
+  let c: V3 = e;
+  let vh = 5.2;
+  for (const [a, b, i] of FIGHTS) {
+    const k = ss(t, a - 0.5, a + 0.3) * (1 - ss(t, b - 0.2, b + 0.6));
+    if (k > w) {
+      w = k;
+      const tc = tw(i);
+      // between the table and Ego, so he stays in frame when he stands up after a win
+      c = [lerp(tc[0], e[0], 0.42), 0, lerp(tc[2], e[2], 0.42)];
+      // push in while the fight lasts; hard fights get closer
+      const hard = i >= 2 ? 1 : 0.5;
+      vh = 4.8 - (0.6 + 0.5 * hard) * ss(t, a, b - 0.6);
+    }
+  }
+  const f: V3 = [lerp(e[0], c[0], w), 0, lerp(e[2], c[2], w)];
+  return [f, lerp(5.2, vh, w)];
+};
+const follow = (t: number): C => {
+  // a soft lag: the average of the last 0.6 s
+  let sx = 0;
+  let sz = 0;
+  let sv = 0;
+  let sw = 0;
+  for (let k = 0; k < 12; k++) {
+    const wk = 12 - k;
+    const [f, vh] = rawFollow(Math.max(0, t - k * 0.05));
+    sx += f[0] * wk;
+    sz += f[2] * wk;
+    sv += vh * wk;
+    sw += wk;
+  }
+  // pull back a little for "Who's next?!" (arms up)
+  const up = ss(t, K.w3 + 0.1, K.w3 + 0.5) * (1 - ss(t, K.dark - 0.1, K.dark));
+  return {viewH: sv / sw + 1.5 * up, cx: sx / sw + 0.05 - 0.35 * up, cy: 1.02 + 0.5 * up, cz: sz / sw + 0.1, pitch: 13 + 1.5 * Math.sin(t * 0.21), yaw: -20 + 3 * Math.sin(t * 0.13), fov: 30, roll: 0};
+};
 
+const SHOT_END = SECONDS;
+const W5 = tw(4);
+const wallW = WALL.x * K3;
 export const cam = (t: number): Cam => {
-  let i = SHOTS.length - 1;
-  while (i > 0 && t < SHOTS[i][0]) i--;
-  const [t0, a, b] = SHOTS[i];
-  const t1 = i + 1 < SHOTS.length ? SHOTS[i + 1][0] : SHOT_END;
-  const c = mixC(a, b, easeInOut(seg(t, t0, t1)));
-  // punches and shakes on the wins and the hit
+  let c: C;
+  if (t < 1.6) {
+    // the opening: wide on the arena, Ego walks in, the camera settles on table 1
+    const wide: C = {viewH: 6.2, cx: 0.6, cy: 1.1, cz: -0.6, pitch: 16, yaw: -24, fov: 32, roll: 0};
+    c = mixC(wide, follow(t), easeInOut(seg(t, 0.2, 1.6)));
+  } else if (t >= K.dark && t < K.t4) {
+    // lights out: down the row from Ego's side — Ego near, Obsession's spot, Discipline's far away
+    const a: C = {viewH: 5.4, cx: tw(3)[0] + 0.3, cy: 1.1, cz: tw(3)[2] + 0.1, pitch: 10, yaw: -70, fov: 30, roll: 0};
+    const b: C = {...a, viewH: 5.0};
+    c = mixC(a, b, easeInOut(seg(t, K.dark, K.t4)));
+  } else if (t >= K.slam && t < K.blink) {
+    // the flight, side on
+    c = {viewH: 5.6, cx: (wallW + W5[0]) / 2 - 0.2, cy: 1.45, cz: W5[2], pitch: 6, yaw: 4, fov: 32, roll: 0};
+  } else if (t >= K.blink && t < K.all) {
+    // at the board: Ego slumped, stars; slow push
+    const a: C = {viewH: 3.2, cx: wallW + 0.55, cy: 0.7, cz: W5[2], pitch: 11, yaw: 40, fov: 30, roll: 0};
+    c = mixC(a, {...a, viewH: 2.5, yaw: 32}, easeInOut(seg(t, K.blink, K.all)));
+  } else if (t >= K.all) {
+    // the closing crane down the row from the first table: the beaten on the floor, Discipline standing at the end
+    const a: C = {viewH: 6.6, cx: tw(2)[0], cy: 0.7, cz: tw(2)[2], pitch: 10, yaw: -76, fov: 32, roll: 0};
+    c = mixC(a, {...a, viewH: 7.2, pitch: 13, yaw: -72}, easeInOut(seg(t, K.all, SHOT_END)));
+  } else c = follow(t);
+  // a nudge on every win and the hit (no shaking)
   const wins = [K.w1, K.w2, K.w3, K.broke];
-  const punch = wins.reduce((m, w) => m + 0.07 * hit(t, w, 6), 0) + 0.12 * hit(t, K.slam, 5) + 0.08 * hit(t, K.slam + 0.36, 6);
+  const punch = wins.reduce((m, w) => m + 0.06 * hit(t, w, 5), 0) + 0.1 * hit(t, K.slam + 0.36, 5);
   c.viewH *= 1 - punch;
-  c.roll += 3 * hit(t, K.w3, 4) - 4 * hit(t, K.slam, 4);
-  const tremble = 0;
-  const [sx, sy] = shake(t, tremble + wins.reduce((m, w) => m + 0.012 * hit(t, w, 9), 0) + 0.025 * hit(t, K.slam, 7) + 0.02 * hit(t, K.slam + 0.36, 8));
+  const [sx, sy] = shake(t, 0.008 * hit(t, K.slam + 0.36, 8));
   return {...c, cx: c.cx + sx, cy: c.cy + sy};
 };
 
@@ -157,9 +207,9 @@ const End: React.FC<{t: number}> = ({t}) => {
 
 /** speech bubbles above Ego's head */
 const BUBBLES: [number, number, string][] = [
-  [K.w1 + 0.2, K.t2 - 0.5, 'Next.'],
-  [K.w2 + 0.35, K.t3 - 0.3, 'Too easy.'],
-  [K.w3 + 0.2, K.dark, "Who's next?!"],
+  [K.w1 + 0.55, 4.95, 'Next.'],
+  [K.w2 + 0.7, 9.3, 'Too easy.'],
+  [K.w3 + 0.45, K.dark, "Who's next?!"],
   [K.s4 + 0.05, K.t5 - 0.1, 'Is that all?'],
   [K.t5 + 0.15, K.sure - 0.15, "This one's easy."],
 ];
@@ -207,6 +257,41 @@ const Labels: React.FC<{t: number; c: Cam}> = ({t, c}) => (
     })}
   </>
 );
+
+/** the impact star on the clasp at every win: white rays and a ring, 0.3 s */
+const Impact: React.FC<{t: number; c: Cam}> = ({t, c}) => {
+  const hits: [number, number, string][] = [
+    [K.w1 + 0.1, 0, '#ff5a4a'],
+    [K.w2 + 0.2, 1, '#ff5a4a'],
+    [K.w3 + 0.1, 2, '#ff5a4a'],
+    [K.broke + 0.08, 3, '#b77cff'],
+  ];
+  return (
+    <>
+      {hits.map(([at, i, col]) => {
+        const k = (t - at) / 0.32;
+        if (k < 0 || k > 1) return null;
+        const tc = tw(i);
+        const cl = clasp(PIN);
+        const [x, y] = project(c, tc[0] + cl[0] * K3, cl[1] * K3, tc[2] + cl[2] * K3);
+        const e = 1 - Math.pow(1 - k, 3);
+        const o = 1 - k;
+        return (
+          <svg key={at} width={1080} height={1920} style={{position: 'absolute', left: 0, top: 0}}>
+            {Array.from({length: 10}, (_, n) => {
+              const a = (n / 10) * Math.PI * 2 + 0.3;
+              const r0 = 20 + 40 * e;
+              const r1 = 70 + 150 * e * (n % 2 ? 0.7 : 1);
+              return <line key={n} x1={x + Math.cos(a) * r0} y1={y + Math.sin(a) * r0} x2={x + Math.cos(a) * r1} y2={y + Math.sin(a) * r1} stroke={n % 3 ? '#ffffff' : col} strokeWidth={10 * o + 2} strokeLinecap="round" opacity={o} />;
+            })}
+            <circle cx={x} cy={y} r={30 + 90 * e} fill="none" stroke="#ffffff" strokeWidth={6 * o} opacity={o} />
+            <circle cx={x} cy={y} r={26 * (1 - k)} fill="#ffffff" opacity={o} />
+          </svg>
+        );
+      })}
+    </>
+  );
+};
 
 /** radial speed lines burst (the comeback, the hit) */
 const Speed: React.FC<{t: number; at: number; colors: [string, string]; life?: number}> = ({t, at, colors, life = 0.42}) => {
@@ -278,6 +363,7 @@ export const SG007Full: React.FC<{withAudio?: boolean; style?: string}> = ({with
       <AbsoluteFill style={{background: 'radial-gradient(ellipse 80% 62% at 50% 50%, rgba(255,40,20,0) 45%, rgba(255,40,20,1) 100%)', opacity: red * (light ? 0.35 : 1), mixBlendMode: light ? 'multiply' : 'screen'}} />
       <Speed t={t} at={K.w3} colors={['#ff4a3a', '#ffffff']} />
       <Speed t={t} at={K.slam} colors={['#3cc8ff', '#ffffff']} life={0.5} />
+      <Impact t={t} c={c} />
       <Labels t={t} c={c} />
       <Bubble t={t} c={c} />
       <Title t={t} />

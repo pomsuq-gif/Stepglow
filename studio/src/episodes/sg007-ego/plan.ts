@@ -13,8 +13,14 @@ export const NAMES = ['Ego', 'Motivation', 'Laziness', 'Talent', 'Obsession', 'D
 export const TINT = {ego: '#ff4a3a', mot: '#ffb347', laz: '#6fe0b4', tal: '#ffd66b', obs: '#b77cff', dis: '#3cc8ff', dead: '#56607a', gold: '#ffd66b'};
 export const TINTS = [TINT.ego, TINT.mot, TINT.laz, TINT.tal, TINT.obs, TINT.dis];
 
-/** the tables (local): a line going away (−z), drifting right */
-export const TP: V3[] = [0, 1, 2, 3, 4].map((i) => [0.55 * i, 0, -2.7 * i]);
+/** the tables (local): a row going right and a little back, as in the reference (the next one is off frame until the camera follows Ego there); the last one stands apart, with room for the flight into the board */
+export const TP: V3[] = [
+  [0, 0, 0],
+  [2.6, 0, -0.8],
+  [5.2, 0, -1.6],
+  [7.8, 0, -2.4],
+  [12.2, 0, -2.6],
+];
 export const tw = (i: number): V3 => [TP[i][0] * K3, 0, TP[i][2] * K3];
 /** the arena board Ego flies into: a wall along z at this x (local), beside the last table */
 export const WALL_X = TP[4][0] - 2.55;
@@ -27,17 +33,33 @@ const at = (p: V3, a: number, o: StandOpts = {}) => place(standR(o), p, a);
 const egoSpot = (i: number) => add3(TP[i], [-0.82, 0, -0.06]);
 const oppSpot = (i: number) => add3(TP[i], [0.82, 0, 0.06]);
 
-/** a walk from p0 to p1 between t0 and t1; facing the way it goes; returns the rig */
-const walk = (t: number, t0: number, t1: number, p0: V3, p1: V3, o: StandOpts = {}) => {
+/** a walk along a polyline between t0 and t1 (eased), facing the way it goes (heading smoothed round the corners) */
+const walk = (t: number, t0: number, t1: number, p0: V3, p1: V3, o: StandOpts = {}, via: V3[] = []) => {
+  const pts = [p0, ...via, p1];
+  const lens = pts.slice(1).map((q, i) => Math.hypot(q[0] - pts[i][0], q[2] - pts[i][2]));
+  const total = lens.reduce((a, b) => a + b, 0);
+  const at2 = (d: number): V3 => {
+    let r = Math.max(0, Math.min(total, d));
+    for (let i = 0; i < lens.length; i++) {
+      if (r <= lens[i] || i === lens.length - 1) {
+        const k = lens[i] > 0 ? r / lens[i] : 0;
+        return [lerp(pts[i][0], pts[i + 1][0], k), 0, lerp(pts[i][2], pts[i + 1][2], k)];
+      }
+      r -= lens[i];
+    }
+    return p1;
+  };
   const k = easeInOut(clamp((t - t0) / (t1 - t0)));
-  const dx = p1[0] - p0[0];
-  const dz = p1[2] - p0[2];
-  const dist = Math.hypot(dx, dz);
-  const p: V3 = [lerp(p0[0], p1[0], k), 0, lerp(p0[2], p1[2], k)];
-  const a = Math.atan2(dx, dz);
+  const d = k * total;
+  const p = at2(d);
+  const ahead = at2(d + 0.35);
+  const behind = at2(d - 0.35);
+  const a = Math.atan2(ahead[0] - behind[0], ahead[2] - behind[2]);
   const st = Math.sin(Math.PI * clamp((t - t0) / (t1 - t0))) ** 0.5;
-  return at(p, a, {...o, phase: (k * dist) / 0.42 * Math.PI, stride: st});
+  return at(p, a, {...o, phase: (d / 0.5) * Math.PI, stride: st * 1.15});
 };
+/** Ego's way from table i to table i+1: round the front of table i, never through it */
+const via = (i: number): V3[] => [add3(TP[i], [-0.2, 0, 0.95]), add3(TP[i + 1], [-1.05, 0, 0.85])];
 
 /* ───────────── the clasp angle of every match (+ = Ego winning) ───────────── */
 
@@ -113,7 +135,7 @@ const gripAt = (i: number, o: Parameters<typeof grip>[0]) => place(grip(o), TP[i
 const S0 = (rig: Rig, tint: string, e = 1): State => ({rig, tint, energy: e, aura: 0, auraColor: tint, spent: 0, strain: 0, label: 1});
 
 /* ── Ego ── */
-const EGO_IN: V3 = [-1.35, 0, 2.6];
+const EGO_IN: V3 = [-2.4, 0, 2.2];
 const egoRig = (t: number): Rig => {
   // table 1
   if (t < 1.32) {
@@ -123,30 +145,30 @@ const egoRig = (t: number): Rig => {
   const into = (i: number, a: number, b: number, m: number) => (t < b ? rigAt(t, [[a, at(egoSpot(i), P2, {proud: 0.5})], [b, gripAt(i, {side: -1, phi: phiAt(b, m), t})]]) : null);
   const g = (m: number, strain = 0, o: Partial<Parameters<typeof grip>[0]> = {}) => gripAt(m - 1, {side: -1, phi: phiAt(t, m), t, strain, ...o});
   if (t < GRIP.m1[0]) return into(0, 1.32, GRIP.m1[0], 1)!;
-  if (t < K.w1 + 0.06) return g(1, 0.15);
-  // stand up, turn to the camera: "Next."
-  if (t < 4.95) return rigAt(t, [[K.w1 + 0.06, g(1)], [K.w1 + 0.38, at(egoSpot(0), P2, {proud: 1})], [4.3, at(egoSpot(0), 0.55, {proud: 1, arms: 'hips'})]]);
-  if (t < 6.2) return walk(t, 4.95, 6.2, egoSpot(0), egoSpot(1), {arms: 'swagger', proud: 1});
-  if (t < GRIP.m2[0]) return into(1, 6.2, GRIP.m2[0], 2)!;
-  if (t < K.w2 + 0.08) return g(2, 0, {lean: 26});
+  if (t < K.w1 + 0.32) return g(1, 0.15);
+  // he keeps the pin a moment, then stands up and turns to the camera: "Next."
+  if (t < 4.95) return rigAt(t, [[K.w1 + 0.32, g(1)], [K.w1 + 0.75, at(egoSpot(0), P2, {proud: 1})], [4.75, at(egoSpot(0), 0.55, {proud: 1, arms: 'hips'})]]);
+  if (t < 6.3) return walk(t, 4.95, 6.3, egoSpot(0), egoSpot(1), {arms: 'swagger', proud: 1}, via(0));
+  if (t < GRIP.m2[0]) return into(1, 6.3, GRIP.m2[0], 2)!;
+  if (t < K.w2 + 0.35) return g(2, 0, {lean: 26});
   // "Too easy." — hands on the hips, chest out
-  if (t < 9.45) return rigAt(t, [[K.w2 + 0.08, g(2, 0, {lean: 26})], [K.w2 + 0.45, at(egoSpot(1), P2, {proud: 1})], [8.95, at(egoSpot(1), 0.6, {proud: 1.2, arms: 'hips'})]]);
-  if (t < 10.4) return walk(t, 9.45, 10.4, egoSpot(1), egoSpot(2), {arms: 'swagger', proud: 1});
-  if (t < GRIP.m3[0]) return into(2, 10.4, GRIP.m3[0], 3)!;
-  if (t < K.w3 + 0.05) {
+  if (t < 9.3) return rigAt(t, [[K.w2 + 0.35, g(2, 0, {lean: 26})], [K.w2 + 0.75, at(egoSpot(1), P2, {proud: 1})], [9.1, at(egoSpot(1), 0.6, {proud: 1.2, arms: 'hips'})]]);
+  if (t < 10.45) return walk(t, 9.3, 10.45, egoSpot(1), egoSpot(2), {arms: 'swagger', proud: 1}, via(1));
+  if (t < GRIP.m3[0]) return into(2, 10.45, GRIP.m3[0], 3)!;
+  if (t < K.w3 + 0.2) {
     const losing = ss(t, 12.2, 13.2);
     return g(3, 0.35 + 0.65 * losing, {lean: 30 + 8 * losing, nod: 0.5 * losing});
   }
   // "WHO'S NEXT?!" — fists in the air
-  if (t < 16.5) return rigAt(t, [[K.w3 + 0.05, g(3, 1, {lean: 38})], [K.w3 + 0.3, at(egoSpot(2), P2, {proud: 1.4, arms: 'up'})], [15.7, at(egoSpot(2), 0.5, {proud: 1.6, arms: 'up'})]]);
+  if (t < 16.5) return rigAt(t, [[K.w3 + 0.2, g(3, 1, {lean: 38})], [K.w3 + 0.5, at(egoSpot(2), P2, {proud: 1.4, arms: 'up'})], [15.95, at(egoSpot(2), 0.5, {proud: 1.6, arms: 'up'})]]);
   // the lights go out; he walks on in the dark
-  if (t < 18.0) return walk(t, 16.5, 18.0, egoSpot(2), egoSpot(3), {arms: 'swagger', proud: 0.6});
+  if (t < 18.0) return walk(t, 16.5, 18.0, egoSpot(2), egoSpot(3), {arms: 'swagger', proud: 0.6}, via(2));
   if (t < GRIP.m4[0]) return into(3, 18.0, GRIP.m4[0], 4)!;
-  if (t < K.broke + 0.05) return g(4, 0.8, {lean: 34});
+  if (t < K.broke + 0.35) return g(4, 0.8, {lean: 34});
   // "Is that all?"
-  if (t < 25.0) return rigAt(t, [[K.broke + 0.05, g(4, 0.5, {lean: 34})], [K.broke + 0.4, at(egoSpot(3), P2, {proud: 1})], [24.7, at(egoSpot(3), 0.7, {proud: 1.4, arms: 'hips'})]]);
-  if (t < 26.25) return walk(t, 25.0, 26.25, egoSpot(3), egoSpot(4), {arms: 'swagger', proud: 1.2});
-  if (t < GRIP.m5[0]) return rigAt(t, [[26.25, at(egoSpot(4), P2, {proud: 1.2})], [26.45, at(egoSpot(4), P2, {proud: 1.2})], [GRIP.m5[0], gripAt(4, {side: -1, phi: 0, t})]]);
+  if (t < 24.9) return rigAt(t, [[K.broke + 0.35, g(4, 0.5, {lean: 34})], [K.broke + 0.75, at(egoSpot(3), P2, {proud: 1})], [24.65, at(egoSpot(3), 0.7, {proud: 1.4, arms: 'hips'})]]);
+  if (t < 26.4) return walk(t, 24.9, 26.4, egoSpot(3), egoSpot(4), {arms: 'swagger', proud: 1.2}, via(3));
+  if (t < GRIP.m5[0]) return rigAt(t, [[26.4, at(egoSpot(4), P2, {proud: 1.2})], [26.5, at(egoSpot(4), P2, {proud: 1.2})], [GRIP.m5[0], gripAt(4, {side: -1, phi: 0, t})]]);
   if (t < K.slam) {
     const st = ss(t, K.sure, K.sure + 0.5);
     return g(5, 0.6 + 0.4 * st, {lean: 32 + 6 * ss(t, K.seen, K.slam)});
@@ -207,8 +229,8 @@ const motState = (t: number): State => {
   let rig: Rig;
   if (t < 1.32) rig = ready(i, t, 1);
   else if (t < GRIP.m1[0]) rig = rigAt(t, [[1.32, ready(i, t, 1)], [GRIP.m1[0], og(m, GRIP.m1[0])]]);
-  else if (t < K.w1) rig = og(m, t, {strain: 0.6 * (1 - ss(t, 2.6, 3.4)), lean: 28 - 6 * ss(t, 2.6, 3.6), slouch: 0.4 * ss(t, 2.8, 3.8)});
-  else rig = thrown(t, K.w1, og(m, K.w1, {slouch: 0.4}), i, place(lie({face: 'down', arms: 'push', knee: 0.6}), add3(TP[i], [1.25, 0, 0.35]), P2 + 0.35), 0.5);
+  else if (t < K.w1 + 0.18) rig = og(m, t, {strain: 0.6 * (1 - ss(t, 2.6, 3.4)), lean: 28 - 6 * ss(t, 2.6, 3.6), slouch: 0.4 * ss(t, 2.8, 3.8)});
+  else rig = thrown(t, K.w1 + 0.18, og(m, K.w1 + 0.18, {slouch: 0.4}), i, place(lie({face: 'down', arms: 'push', knee: 0.6}), add3(TP[i], [1.3, 0, -0.55]), P2 + 0.25), 0.5);
   const s = S0(rig, TINT.mot, 1.5 - 1.3 * ss(t, 2.4, 3.7));
   s.aura = 0.55 * ss(t, 1.65, 1.95) * (1 - ss(t, 2.4, 3.3));
   s.spent = ss(t, K.w1 + 0.1, K.w1 + 0.8);
@@ -224,12 +246,12 @@ const lazState = (t: number): State => {
   const slouchy = (tt: number) => at(add3(oppSpot(i), [0, 0, 0]), -P2, {lean: 10, crouch: 0.03, arms: 'down', head: [0, -0.05, 0.02]});
   if (t < 6.2) rig = slouchy(t);
   else if (t < GRIP.m2[0]) rig = rigAt(t, [[6.2, slouchy(t)], [GRIP.m2[0], og(m, GRIP.m2[0], {slouch: 1, peg: 0.2, lean: 22})]]);
-  else if (t < K.w2) rig = og(m, t, {slouch: 1, peg: 0.2, lean: 22, nod: 0.6});
+  else if (t < K.w2 + 0.25) rig = og(m, t, {slouch: 1, peg: 0.2, lean: 22, nod: 0.6});
   else
     rig = rigAt(t, [
-      [K.w2, og(m, K.w2, {slouch: 1, peg: 0, nod: 0.6})],
-      [K.w2 + 0.3, at(add3(oppSpot(i), [0.15, 0, 0]), -P2, {crouch: 0.25, lean: 15})],
-      [K.w2 + 0.75, place(lie({face: 'up', arms: 'pillow', knee: 0.7}), add3(TP[i], [1.1, 0, -0.1]), P2 + 0.15)],
+      [K.w2 + 0.25, og(m, K.w2 + 0.25, {slouch: 1, peg: 0, nod: 0.6})],
+      [K.w2 + 0.55, at(add3(oppSpot(i), [0.15, 0, -0.2]), -P2, {crouch: 0.25, lean: 15})],
+      [K.w2 + 1.0, place(lie({face: 'up', arms: 'pillow', knee: 0.7}), add3(TP[i], [1.15, 0, -0.75]), P2 + 0.15)],
     ]);
   const s = S0(rig, TINT.laz, 0.35 + 0.1 * Math.sin(t * 2));
   s.spent = 0.25 * ss(t, K.w2, K.w2 + 0.6);
@@ -242,10 +264,10 @@ const talState = (t: number): State => {
   let rig: Rig;
   if (t < 10.4) rig = ready(i, t, 0.5);
   else if (t < GRIP.m3[0]) rig = rigAt(t, [[10.4, ready(i, t, 0.5)], [GRIP.m3[0], og(m, GRIP.m3[0])]]);
-  else if (t < K.w3) {
+  else if (t < K.w3 + 0.16) {
     const win = ss(t, 12.2, 13.2);
     rig = og(m, t, {strain: 0.5 + 0.3 * win, lean: 30 + 4 * win});
-  } else rig = thrown(t, K.w3, og(m, K.w3, {strain: 1}), i, place(lie({face: 'up', arms: 'out', knee: 0.3}), add3(TP[i], [1.5, 0, -0.25]), P2 - 0.3), 0.6);
+  } else rig = thrown(t, K.w3 + 0.16, og(m, K.w3 + 0.16, {strain: 1}), i, place(lie({face: 'up', arms: 'out', knee: 0.3}), add3(TP[i], [1.5, 0, -0.75]), P2 - 0.2), 0.6);
   const s = S0(rig, TINT.tal, 1.1);
   s.aura = 0.35 * ss(t, 12.2, 13) * (1 - ss(t, K.w3, K.w3 + 0.2));
   s.spent = ss(t, K.w3 + 0.2, K.w3 + 0.9);
@@ -260,12 +282,12 @@ const obsState = (t: number): State => {
   let rig: Rig;
   if (t < 18.0) rig = ready(i, t, 1.6);
   else if (t < GRIP.m4[0]) rig = rigAt(t, [[18.0, ready(i, t, 1.6)], [GRIP.m4[0], og(m, GRIP.m4[0])]]);
-  else if (t < K.broke) rig = og(m, t, {strain: 1, lean: 36});
+  else if (t < K.broke + 0.12) rig = og(m, t, {strain: 1, lean: 36});
   else
     rig = rigAt(t, [
-      [K.broke, og(m, K.broke, {strain: 1, lean: 36, peg: 1})],
-      [K.broke + 0.25, at(add3(oppSpot(i), [0.3, 0, 0.1]), -P2 + 0.3, {lean: 25, crouch: 0.08})],
-      [K.broke + 0.75, place(kneel({rock: 4 * Math.sin(t * 9)}), add3(TP[i], [1.05, 0, 0.15]), -P2 + 0.25)],
+      [K.broke + 0.12, og(m, K.broke + 0.12, {strain: 1, lean: 36, peg: 1})],
+      [K.broke + 0.35, at(add3(oppSpot(i), [0.3, 0, -0.15]), -P2 + 0.3, {lean: 25, crouch: 0.08})],
+      [K.broke + 0.9, place(kneel({rock: 3 * Math.sin(t * 3)}), add3(TP[i], [1.05, 0, -0.6]), -P2 + 0.35)],
     ]);
   const s = S0(rig, TINT.obs, 1.35);
   s.aura = Math.max(0.25 * ss(t, 16.6, 17.2), ss(t, 18.3, 19) * (0.9 + 0.3 * ss(t, K.never - 0.3, K.never + 0.4) - 0.3 * ss(t, K.wont, K.broke))) * (1 - ss(t, K.broke, K.broke + 0.5));
