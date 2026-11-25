@@ -293,7 +293,7 @@ export const CARTOONS: Sty[] = [
 /** the chosen look: toy blocks in the built-out tournament hall, graded, new fonts */
 export const BLOCKS: Sty = {
   ...realBase('blocks', 'Toy Blocks · Tournament', 'hall', false, '#ffffff', '0 4px 0 #1a0e0a, 0 0 2px #1a0e0a, 0 8px 24px rgba(0,0,0,0.75)'),
-  real: {env: 'pro', colored: true},
+  real: {env: 'pro', colored: true, neck: 0.23},
   look: {...SG, bloom: {strength: 0.2, radius: 0.45, threshold: 0.96}, vignette: 0.42, grain: 0},
   cap: {fontFamily: 'Nunito', fontWeight: 900, letterSpacing: '0.005em', WebkitTextStroke: '3px #1a0e0a', paintOrder: 'stroke fill'},
 };

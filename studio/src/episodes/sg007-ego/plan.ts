@@ -167,7 +167,7 @@ const egoRig = (t: number): Rig => {
   return rigAt(t, [
     [K.slam + fl, sp],
     [K.slam + fl + 0.22, place(splat(), add3(wallP, [0, 0.33, 0]), P2)],
-    [K.slam + fl + 0.75, place(slump({tilt: 1}), add3(wallP, [0.02, 0, 0]), P2)],
+    [K.slam + fl + 0.75, place(slump({tilt: 1}), add3(wallP, [0.26, 0, 0]), P2)],
   ]);
 };
 

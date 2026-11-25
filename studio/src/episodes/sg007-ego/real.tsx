@@ -9,6 +9,9 @@ import {add, HB, K3, mul, W3, type J3} from '../sg003-same-bar/rig3';
 import {CAST, TINTS, tw} from './plan';
 import {PEG, solveR, TOP, TY} from './rig';
 import {CartoonMan, type Design} from './cartoon';
+import {lights} from './World';
+import {K as KT, hit} from './grid';
+import {WALL} from './plan';
 import {BlockMan} from './blockman';
 
 /**
@@ -489,11 +492,12 @@ export const RealScene: React.FC<{t: number; env: RealEnv; colored: boolean; des
   const st = CAST.map((f) => f(t));
   return (
     <>
-      <Setup exposure={EXPO[env][0]} envAmt={EXPO[env][1]} />
+      <Setup exposure={EXPO[env][0]} envAmt={EXPO[env][1] * (env === 'pro' ? 0.15 + 0.85 * lights(t).house : 1)} />
       {env === 'pro' ? <HallPro t={t} /> : env === 'hall' ? <Hall /> : env === 'pub' ? <Pub /> : env === 'garage' ? <Garage /> : <Gym />}
       {[0, 1, 2, 3, 4].map((i) => (
         <ArmTable key={i} i={i} pad={['#e8a020', '#2aa070', '#e8c020', '#7a4ad8', '#2a7ad8'][i]} />
       ))}
+      {env === 'pro' ? <BlockFx t={t} /> : null}
       {env === 'pro'
         ? st.map((s, i) => <BlockMan key={i} j={solveR(s.rig)} idx={i} spent={s.spent} energy={s.energy} noArm={s.noArm} crown={i === 0 && t < 30.1} light={TINTS[i]} neck={neck} />)
         : design
@@ -627,6 +631,8 @@ const BEAM_VERT = `varying vec2 vUv; varying vec3 vN; varying vec3 vV; void main
 const beamMat = (c: string, a: number) => P(`beam${c}${a}`, () => new THREE.ShaderMaterial({vertexShader: BEAM_VERT, fragmentShader: BEAM_FRAG, transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, uniforms: {uC: {value: new THREE.Color(c)}, uA: {value: a}}, fog: false}));
 
 export const HallPro: React.FC<{t: number}> = ({t}) => {
+  const L = lights(t);
+  const q = (x: number) => Math.round(x * 20) / 20;
   const floor = P('parquetPro', () => new THREE.MeshPhysicalMaterial({map: canvasTex('parquet2', 1024, planks('#b5824c', '#d6a76c', '#6a4422'), [7, 7]), roughness: 0.38, clearcoat: 0.55, clearcoatRoughness: 0.22}));
   const lines = P('court', () => new THREE.MeshBasicMaterial({map: canvasTex('court', 1024, courtLines, [1, 1]), transparent: true, depthWrite: false, opacity: 0.7}));
   const carpet = P('carpet', () => new THREE.MeshStandardMaterial({color: '#7a1218', roughness: 0.95}));
@@ -655,12 +661,12 @@ export const HallPro: React.FC<{t: number}> = ({t}) => {
         </mesh>
       ))}
       {/* barrier boards with an LED strip */}
-      <Bx p={[1.2, 0.45, -11.2]} s={[20, 0.9, 0.12]} m={board} />
-      <mesh position={[1.2, 0.82, -11.13]} material={led('#3aa0ff')}>
+      <Bx p={[1.2, 0.45, -12.15]} s={[20, 0.9, 0.12]} m={board} />
+      <mesh position={[1.2, 0.82, -12.08]} material={led('#3aa0ff')}>
         <planeGeometry args={[20, 0.05]} />
       </mesh>
       {Array.from({length: 8}, (_, k) => (
-        <mesh key={k} position={[-7 + k * 2.4, 0.45, -11.13]} material={P(`panel${k}`, () => new THREE.MeshStandardMaterial({color: ['#c8202a', '#1e3e8a', '#f4c430', '#1e3e8a'][k % 4], roughness: 0.5, emissive: ['#c8202a', '#1e3e8a', '#f4c430', '#1e3e8a'][k % 4], emissiveIntensity: 0.25}))}>
+        <mesh key={k} position={[-7 + k * 2.4, 0.45, -12.08]} material={P(`panel${k}`, () => new THREE.MeshStandardMaterial({color: ['#c8202a', '#1e3e8a', '#f4c430', '#1e3e8a'][k % 4], roughness: 0.5, emissive: ['#c8202a', '#1e3e8a', '#f4c430', '#1e3e8a'][k % 4], emissiveIntensity: 0.25}))}>
           <planeGeometry args={[2.1, 0.55]} />
         </mesh>
       ))}
@@ -674,7 +680,7 @@ export const HallPro: React.FC<{t: number}> = ({t}) => {
       <CrowdBlocks t={t} />
       {/* the big screen and its frame */}
       <Bx p={[1.1, 6.4, -15.6]} s={[9.6, 3.4, 0.2]} m={std('#0c0d12', 0.5, 0.6)} cast={false} />
-      <mesh position={[1.1, 6.4, -15.48]} material={screen}>
+      <mesh position={[1.1, 6.4, -15.48]} material={screen} visible={L.house > 0.3}>
         <planeGeometry args={[9.2, 3.0]} />
       </mesh>
       {Array.from({length: 5}, (_, k) => (
@@ -690,19 +696,24 @@ export const HallPro: React.FC<{t: number}> = ({t}) => {
         const p: V3 = [c[0] - 0.4, 4.42, c[2] + 0.5];
         return (
           <React.Fragment key={i}>
-            <ParCan p={p} to={[c[0], 0, c[2]]} color="#ffe8c8" a={0.07} />
-            <Spot p={p} target={[c[0], 0.6, c[2]]} color="#ffe6c4" intensity={i < 3 ? 6.5 : 4.5} angle={0.5} shadow={i === 0 || i === 2} />
+            <ParCan p={p} to={[c[0], 0, c[2]]} color="#ffe8c8" a={q(0.07 * L.spots[i])} />
+            <Spot p={p} target={[c[0], 0.6, c[2]]} color="#ffe6c4" intensity={(i < 3 ? 6.5 : 5.5) * L.spots[i] * (1 + 0.6 * (i < 4 ? hit(t, [KT.w1, KT.w2, KT.w3, KT.broke][i], 5) : hit(t, KT.slam, 4)))} angle={0.5} shadow={i === 0 || i === 2 || i === 4} />
           </React.Fragment>
         );
       })}
       {[-3.2, 5.8].map((x, k) => (
         <React.Fragment key={k}>
-          <ParCan p={[x, 4.4, -3]} to={[1.1, 0, -5 - 2 * k]} color="#5a8aff" a={0.05} />
-          <Spot p={[x, 4.4, -3]} target={[1.1, 0.8, -5]} color="#6a96ff" intensity={4} angle={0.7} shadow={false} />
+          <ParCan p={[x, 4.4, -3]} to={[1.1, 0, -5 - 2 * k]} color="#5a8aff" a={q(0.05 * L.house)} />
+          <Spot p={[x, 4.4, -3]} target={[1.1, 0.8, -5]} color="#6a96ff" intensity={4 * L.house} angle={0.7} shadow={false} />
         </React.Fragment>
       ))}
-      <Spot p={[1.1, 3, 6]} target={[1.1, 0.8, -2]} color="#ffd8b0" intensity={1.6} angle={0.6} shadow={false} />
-      <hemisphereLight args={['#8aa0d8', '#3a2414', 0.3]} />
+      <Spot p={[1.1, 3, 6]} target={[1.1, 0.8, -2]} color="#ffd8b0" intensity={1.6 * L.house} angle={0.6} shadow={false} />
+      <hemisphereLight args={['#8aa0d8', '#3a2414', 0.06 + 0.24 * L.house]} />
+      {/* the side board Ego is thrown into */}
+      <Bx p={[WALL.x * K3 - 0.07, 0.45, WALL.z * K3 + 0.4]} s={[0.12, 0.9, 3.4]} m={board} />
+      <mesh position={[WALL.x * K3 - 0.005, 0.82, WALL.z * K3 + 0.4]} rotation={[0, Math.PI / 2, 0]} material={led('#3aa0ff')}>
+        <planeGeometry args={[3.4, 0.05]} />
+      </mesh>
       {/* dust in the beams */}
       {Array.from({length: 60}, (_, i) => {
         const c = TABLES[i % 5];
@@ -715,4 +726,80 @@ export const HallPro: React.FC<{t: number}> = ({t}) => {
       })}
     </>
   );
+};
+
+/* ───────────── block effects: the arm breaking into cubes, the crown flying, stars round a dazed head ───────────── */
+
+const G9 = 9.8;
+export const BlockFx: React.FC<{t: number}> = ({t}) => {
+  const purple = P('shardP', () => new THREE.MeshToonMaterial({color: '#9a6cf0'}));
+  const gold = P('shardG', () => new THREE.MeshStandardMaterial({color: '#ffc93a', metalness: 0.9, roughness: 0.3, emissive: '#3a2400'}));
+  const star = P('star', () => new THREE.MeshBasicMaterial({color: new THREE.Color('#ffd84a').multiplyScalar(1.4)}));
+  const out: React.ReactNode[] = [];
+  // Obsession's arm bursts into cubes at the snap
+  const dt = t - KT.broke;
+  if (dt >= 0) {
+    const j = solveR(CAST[4](KT.broke).rig);
+    const from = W3(j.el[0], [0, 0, 0], K3);
+    const top = TY * K3 + 0.02;
+    const tab = tw(3);
+    for (let i = 0; i < 16; i++) {
+      const a = R(i + 900) * Math.PI * 2;
+      const v = 0.9 + 1.4 * R(i + 901);
+      const vy = 1.2 + 1.6 * R(i + 902);
+      const vx = Math.cos(a) * v + 0.5;
+      const vz = Math.sin(a) * v * 0.7;
+      const s = 0.03 + 0.03 * R(i + 903);
+      let x = from[0] + vx * dt;
+      let z = from[2] + vz * dt;
+      let y = from[1] + vy * dt - 0.5 * G9 * dt * dt;
+      const onTop = Math.abs(x - tab[0]) < TOP.x * K3 && Math.abs(z - tab[2]) < TOP.z * K3;
+      const fl = (onTop ? top : 0) + s / 2;
+      let spin = dt * 9;
+      if (y < fl) {
+        const tl = (vy + Math.sqrt(Math.max(0, vy * vy + 2 * G9 * (from[1] - fl)))) / G9;
+        const sl = Math.min(dt - tl, 0.4);
+        x = from[0] + vx * tl + vx * 0.2 * sl;
+        z = from[2] + vz * tl + vz * 0.2 * sl;
+        y = fl;
+        spin = tl * 9;
+      }
+      out.push(<Bx key={`s${i}`} p={[x, y, z]} s={[s, s, s]} m={purple} ry={spin + i} />);
+    }
+  }
+  // the crown flies off at the hit and tumbles to the floor
+  const ct = t - KT.slam - 0.05;
+  if (ct >= 0) {
+    const j = solveR(CAST[0](KT.slam + 0.05).rig);
+    const h0 = W3(j.head, [0, 0, 0], K3);
+    const v: V3 = [-1.2, 2.4, 0.8];
+    const tl = (v[1] + Math.sqrt(v[1] * v[1] + 2 * G9 * (h0[1] + 0.1))) / G9;
+    const k = Math.min(ct, tl);
+    const roll = Math.max(0, Math.min(ct - tl, 0.9));
+    const e = roll - (roll * roll) / 1.8;
+    const p: V3 = ct < tl ? [h0[0] + v[0] * ct, h0[1] + 0.1 + v[1] * ct - 0.5 * G9 * ct * ct, h0[2] + v[2] * ct] : [h0[0] + v[0] * tl + 0.4 * e, 0.035, h0[2] + v[2] * tl + 0.6 * e];
+    out.push(
+      <group key="crown" position={p} rotation={[k * 12 * (ct < tl ? 1 : 0) + (ct < tl ? 0 : 0.0), k * 5 + e * 4, ct < tl ? k * 7 : Math.PI / 2 * Math.min(1, roll * 4)]}>
+        <Bx p={[0, 0, 0]} s={[0.24, 0.06, 0.23]} m={gold} />
+        {[-1, 0, 1].map((n) => (
+          <React.Fragment key={n}>
+            <Bx p={[n * 0.095, 0.06, 0]} s={[0.05, 0.08, 0.05]} m={gold} />
+            <Bx p={[0, 0.06, n * 0.095]} s={[0.05, 0.08, 0.05]} m={gold} />
+          </React.Fragment>
+        ))}
+      </group>,
+    );
+  }
+  // stars round Ego's head once he sits against the board
+  const on = Math.min(1, Math.max(0, (t - KT.slam - 1.0) / 0.3));
+  if (on > 0) {
+    const j = solveR(CAST[0](t).rig);
+    const hd = add(W3(j.shc, [0, 0, 0], K3), mul(j.up, 0.23));
+    for (let i = 0; i < 4; i++) {
+      const a = t * 4 + (i / 4) * Math.PI * 2;
+      const sz = 0.085 * on;
+      out.push(<Bx key={`st${i}`} p={[hd[0] + Math.cos(a) * 0.1, hd[1] + 0.27 + 0.03 * Math.sin(a * 2), hd[2] + Math.sin(a) * 0.28]} s={[sz, sz, sz * 0.5]} m={star} ry={a * 2} />);
+    }
+  }
+  return <>{out}</>;
 };

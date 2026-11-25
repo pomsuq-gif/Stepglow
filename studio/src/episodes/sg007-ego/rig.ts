@@ -240,7 +240,7 @@ export const kneel = (o: {hunch?: number; rock?: number} = {}): Rig => {
 /** sitting on the floor with the back against a wall, legs out, arms limp (Ego after the flight); faces +z */
 export const slump = (o: {tilt?: number; roll?: number} = {}): Rig => {
   const pel: V3 = [0, HB.lr[0] * 1.1, 0.02];
-  const up = norm([0.08 * (o.roll ?? 0), 1, -0.32]);
+  const up = norm([0.08 * (o.roll ?? 0), 1, -0.2]);
   return {
     pel,
     up,

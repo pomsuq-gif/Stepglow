@@ -48,14 +48,14 @@ const SHOTS: [number, C, C][] = [
   [K.t4, on(3, {viewH: 3.2, yaw: -18}), on(3, {viewH: 2.9, yaw: -6})],
   [K.never, on(3, {viewH: 3.2, yaw: 34, pitch: 5, roll: -5, dx: 0.1}), on(3, {viewH: 3.0, yaw: 28, pitch: 4, roll: -7, dx: 0.1})],
   [K.wont, on(3, {viewH: 3.1, yaw: -34, pitch: 5, roll: 6, dx: -0.1}), on(3, {viewH: 2.9, yaw: -28, pitch: 4, roll: 8, dx: -0.1})],
-  [K.broke, on(3, {viewH: 3.4, yaw: 8, pitch: 14, cy: 0.8}), on(3, {viewH: 3.7, yaw: 12, pitch: 15, cy: 0.8})],
+  [K.broke, on(3, {viewH: 4.5, yaw: 8, pitch: 13, cy: 0.75, dx: 0.35}), on(3, {viewH: 4.8, yaw: 12, pitch: 14, cy: 0.75, dx: 0.4})],
   [K.s4, on(3, {viewH: 3.3, yaw: 22, pitch: 8, cy: 0.8, dx: 0.2}), on(3, {viewH: 3.5, yaw: 16, pitch: 9, cy: 0.85})],
   [K.t5, on(4, {viewH: 3.8, yaw: -8, pitch: 10, dx: -0.3}), on(4, {viewH: 3.3, yaw: -4, pitch: 10, dx: -0.2})],
   [K.sure, on(4, {viewH: 3.0, yaw: -22, pitch: 8}), on(4, {viewH: 2.7, yaw: -18, pitch: 7, roll: 2})],
   [K.seen, on(4, {viewH: 3.2, yaw: 26, pitch: 6, dx: 0.1}), on(4, {viewH: 2.8, yaw: 18, pitch: 5, dx: 0.1})],
-  [K.slam, {...on(4, {dx: -1.25, dz: 0.2}), viewH: 4.8, cy: 0.75, pitch: 8, yaw: 4, fov: 34, roll: 0}, {...on(4, {dx: -1.35, dz: 0.2}), viewH: 4.4, cy: 0.7, pitch: 8, yaw: 8, fov: 34, roll: 0}],
-  [K.blink, {viewH: 2.6, cx: WALL.x * K3 + 0.6, cy: 0.55, cz: WALL.z * K3, pitch: 8, yaw: 60, fov: 30, roll: 0}, {viewH: 2.3, cx: WALL.x * K3 + 0.55, cy: 0.55, cz: WALL.z * K3, pitch: 7, yaw: 52, fov: 30, roll: 0}],
-  [K.all, {viewH: 7.6, cx: 0.9, cy: 0.4, cz: -5.4, pitch: 34, yaw: -36, fov: 34, roll: 0}, {viewH: 9.2, cx: 0.6, cy: 0.4, cz: -6.2, pitch: 46, yaw: -46, fov: 34, roll: 0}],
+  [K.slam, {...on(4, {dx: -1.45, dz: 0.2}), viewH: 5.8, cy: 1.0, pitch: 8, yaw: 4, fov: 34, roll: 0}, {...on(4, {dx: -1.55, dz: 0.2}), viewH: 5.4, cy: 0.95, pitch: 8, yaw: 8, fov: 34, roll: 0}],
+  [K.blink, {viewH: 3.0, cx: WALL.x * K3 + 0.5, cy: 0.62, cz: WALL.z * K3, pitch: 10, yaw: 80, fov: 30, roll: 0}, {viewH: 2.7, cx: WALL.x * K3 + 0.45, cy: 0.62, cz: WALL.z * K3, pitch: 9, yaw: 72, fov: 30, roll: 0}],
+  [K.all, {viewH: 6.4, cx: 0.9, cy: 0.7, cz: -5.6, pitch: 14, yaw: -30, fov: 34, roll: 0}, {viewH: 7.4, cx: 0.8, cy: 0.8, cz: -6.0, pitch: 17, yaw: -40, fov: 34, roll: 0}],
 ];
 const SHOT_END = SECONDS;
 
@@ -238,7 +238,7 @@ const StyText: React.FC<{sty: Sty; children: React.ReactNode}> = ({sty, children
 
 const darkness = (t: number) => Math.max(1 - seg(t, 0.0, 0.3), seg(t, SECONDS - 0.4, SECONDS - 0.05));
 
-export const SG007Full: React.FC<{withAudio?: boolean; style?: string}> = ({withAudio = true, style = 'toon'}) => {
+export const SG007Full: React.FC<{withAudio?: boolean; style?: string}> = ({withAudio = true, style = 'blocks'}) => {
   const sty: Sty = STY[style] ?? STY.toon;
   const light = sty.fig === 'clay' || sty.fig === 'ink' || ['paper', 'comic', 'show', 'colosseum'].includes(sty.env ?? '');
   const frame = useCurrentFrame();
