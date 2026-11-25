@@ -56,7 +56,7 @@ const rawFollow = (t: number): [V3, number] => {
   const e = egoPel(t);
   let w = 0;
   let c: V3 = e;
-  let vh = 5.6;
+  let vh = 4.8;
   for (const [a, b, i] of FIGHTS) {
     const k = ss(t, a - 0.5, a + 0.3) * (1 - ss(t, b - 0.2, b + 0.6));
     if (k > w) {
@@ -66,11 +66,11 @@ const rawFollow = (t: number): [V3, number] => {
       c = [lerp(tc[0], e[0], 0.42), 0, lerp(tc[2], e[2], 0.42)];
       // push in while the fight lasts; hard fights get closer
       const hard = i >= 2 ? 1 : 0.5;
-      vh = 5.2 - (0.4 + 0.4 * hard) * ss(t, a, b - 0.6);
+      vh = 4.5 - (0.35 + 0.35 * hard) * ss(t, a, b - 0.6);
     }
   }
   const f: V3 = [lerp(e[0], c[0], w), 0, lerp(e[2], c[2], w)];
-  return [f, lerp(5.6, vh, w)];
+  return [f, lerp(4.8, vh, w)];
 };
 const follow = (t: number): C => {
   // a soft lag: the average of the last 0.6 s
@@ -88,7 +88,7 @@ const follow = (t: number): C => {
   }
   // pull back a little for "Who's next?!" (arms up)
   const up = ss(t, K.w3 + 0.1, K.w3 + 0.5) * (1 - ss(t, K.dark - 0.1, K.dark));
-  return {viewH: sv / sw + 1.2 * up, cx: sx / sw + 0.05 - 0.3 * up, cy: 1.05 + 0.35 * up, cz: sz / sw + 0.05, pitch: 9 + 1 * Math.sin(t * 0.21), yaw: -16 + 2 * Math.sin(t * 0.13), fov: 30, roll: 0};
+  return {viewH: sv / sw + 1.0 * up, cx: sx / sw + 0.1 - 0.25 * up, cy: 1.0 + 0.3 * up, cz: sz / sw + 0.1, pitch: 9 + 1 * Math.sin(t * 0.21), yaw: -14 + 2 * Math.sin(t * 0.13), fov: 44, roll: 0};
 };
 
 const SHOT_END = SECONDS;
@@ -98,11 +98,11 @@ export const cam = (t: number): Cam => {
   let c: C;
   if (t < 1.6) {
     // the opening: wide on the arena, Ego walks in, the camera settles on table 1
-    const wide: C = {viewH: 6.2, cx: 0.6, cy: 1.1, cz: -0.6, pitch: 16, yaw: -24, fov: 32, roll: 0};
+    const wide: C = {viewH: 6.0, cx: 0.3, cy: 1.1, cz: -1.2, pitch: 11, yaw: -10, fov: 44, roll: 0};
     c = mixC(wide, follow(t), easeInOut(seg(t, 0.2, 1.6)));
   } else if (t >= K.dark && t < K.t4) {
     // lights out: down the row from Ego's side — Ego near, Obsession's spot, Discipline's far away
-    const a: C = {viewH: 5.4, cx: tw(3)[0] + 0.3, cy: 1.1, cz: tw(3)[2] + 0.1, pitch: 10, yaw: -70, fov: 30, roll: 0};
+    const a: C = {viewH: 6.4, cx: tw(3)[0] + 0.4, cy: 1.1, cz: tw(3)[2] + 0.6, pitch: 9, yaw: 30, fov: 40, roll: 0};
     const b: C = {...a, viewH: 5.0};
     c = mixC(a, b, easeInOut(seg(t, K.dark, K.t4)));
   } else if (t >= K.slam && t < K.blink) {
@@ -114,8 +114,8 @@ export const cam = (t: number): Cam => {
     c = mixC(a, {...a, viewH: 2.5, yaw: 32}, easeInOut(seg(t, K.blink, K.all)));
   } else if (t >= K.all) {
     // the closing crane down the row from the first table: the beaten on the floor, Discipline standing at the end
-    const a: C = {viewH: 6.6, cx: tw(2)[0], cy: 0.7, cz: tw(2)[2], pitch: 10, yaw: -76, fov: 32, roll: 0};
-    c = mixC(a, {...a, viewH: 7.2, pitch: 13, yaw: -72}, easeInOut(seg(t, K.all, SHOT_END)));
+    const a: C = {viewH: 7.0, cx: tw(2)[0] + 0.2, cy: 0.8, cz: tw(2)[2], pitch: 12, yaw: -8, fov: 40, roll: 0};
+    c = mixC(a, {...a, viewH: 7.8, pitch: 17, yaw: -4}, easeInOut(seg(t, K.all, SHOT_END)));
   } else c = follow(t);
   // a nudge on every win and the hit (no shaking)
   const wins = [K.w1, K.w2, K.w3, K.broke];

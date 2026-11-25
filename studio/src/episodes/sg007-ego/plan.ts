@@ -14,13 +14,7 @@ export const TINT = {ego: '#ff4a3a', mot: '#ffb347', laz: '#6fe0b4', tal: '#ffd6
 export const TINTS = [TINT.ego, TINT.mot, TINT.laz, TINT.tal, TINT.obs, TINT.dis];
 
 /** the tables (local): a row going right and a little back, as in the reference (the next one is off frame until the camera follows Ego there); the last one stands apart, with room for the flight into the board */
-export const TP: V3[] = [
-  [0, 0, 0],
-  [3.3, 0, -0.8],
-  [6.6, 0, -1.6],
-  [9.9, 0, -2.4],
-  [14.3, 0, -2.6],
-];
+export const TP: V3[] = [0, 1, 2, 3, 4].map((i) => [-1.0 * i, 0, -3.4 * i]);
 export const tw = (i: number): V3 => [TP[i][0] * K3, 0, TP[i][2] * K3];
 /** the arena board Ego flies into: a wall along z at this x (local), beside the last table */
 export const WALL_X = TP[4][0] - 2.55;
@@ -59,7 +53,7 @@ const walk = (t: number, t0: number, t1: number, p0: V3, p1: V3, o: StandOpts = 
   return at(p, a, {...o, phase: (d / 0.5) * Math.PI, stride: st * 1.15});
 };
 /** Ego's way from table i to table i+1: round the front of table i, never through it */
-const via = (i: number): V3[] => [add3(TP[i], [-0.2, 0, 0.95]), add3(TP[i + 1], [-1.05, 0, 0.85])];
+const via = (i: number): V3[] => [add3(TP[i], [-1.05, 0, -0.9])];
 
 /* ───────────── the clasp angle of every match (+ = Ego winning) ───────────── */
 
@@ -135,7 +129,7 @@ const gripAt = (i: number, o: Parameters<typeof grip>[0]) => place(grip(o), TP[i
 const S0 = (rig: Rig, tint: string, e = 1): State => ({rig, tint, energy: e, aura: 0, auraColor: tint, spent: 0, strain: 0, label: 1});
 
 /* ── Ego ── */
-const EGO_IN: V3 = [-2.4, 0, 2.2];
+const EGO_IN: V3 = [1.9, 0, 2.8];
 const egoRig = (t: number): Rig => {
   // table 1
   if (t < 1.32) {

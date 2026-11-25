@@ -549,7 +549,7 @@ const CrowdBlocks: React.FC<{t: number}> = ({t}) => {
       Array.from({length: n}, (_, i) => {
         const r = Math.floor(i / 70);
         const k = i % 70;
-        return {x: -12 + k * 0.36 + (R(i) - 0.5) * 0.16, y: 0.62 + r * 0.9, z: -20.45 - r * 0.55, c: ['#5a6a8a', '#8a5a5a', '#6a8a6a', '#8a7a5a', '#6a5a8a', '#4a5a6a', '#9a9aa8'][Math.floor(R(i + 9) * 7)], s: 0.9 + 0.2 * R(i + 3), seed: i, skip: R(i + 1) < 0.12};
+        return {x: -14 + k * 0.36 + (R(i) - 0.5) * 0.16, y: 0.62 + r * 0.9, z: -21.45 - r * 0.55, c: ['#5a6a8a', '#8a5a5a', '#6a8a6a', '#8a7a5a', '#6a5a8a', '#4a5a6a', '#9a9aa8'][Math.floor(R(i + 9) * 7)], s: 0.9 + 0.2 * R(i + 3), seed: i, skip: R(i + 1) < 0.12};
       }),
     [],
   );
@@ -647,8 +647,8 @@ const BEAM_VERT = `varying vec2 vUv; varying vec3 vN; varying vec3 vV; void main
 const beamMat = (c: string, a: number) => P(`beam${c}${a}`, () => new THREE.ShaderMaterial({vertexShader: BEAM_VERT, fragmentShader: BEAM_FRAG, transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, uniforms: {uC: {value: new THREE.Color(c)}, uA: {value: a}}, fog: false}));
 
 /** the runway along the row of tables: centre and angle */
-const RC: V3 = [6.3, 0, -1.4];
-const RA = Math.atan2(2.68, 12.57);
+const RC: V3 = [-2.06, 0, -7.0];
+const RA = Math.atan2(14.0, -4.12);
 
 export const HallPro: React.FC<{t: number}> = ({t}) => {
   const L = lights(t);
@@ -673,28 +673,28 @@ export const HallPro: React.FC<{t: number}> = ({t}) => {
         <planeGeometry args={[22, 9]} />
       </mesh>
       <mesh position={[RC[0], 0.004, RC[2]]} rotation={[-Math.PI / 2, 0, RA]} material={carpet} receiveShadow>
-        <planeGeometry args={[17, 3.2]} />
+        <planeGeometry args={[18.5, 3.2]} />
       </mesh>
       {[-1, 1].map((s) => (
         <mesh key={s} position={[RC[0] + s * 1.62 * Math.sin(RA), 0.006, RC[2] + s * 1.62 * Math.cos(RA)]} rotation={[-Math.PI / 2, 0, RA]} material={goldTrim}>
-          <planeGeometry args={[17, 0.06]} />
+          <planeGeometry args={[18.5, 0.06]} />
         </mesh>
       ))}
       {/* barrier boards with an LED strip */}
-      <Bx p={[1.2, 0.45, -12.15]} s={[20, 0.9, 0.12]} m={board} />
-      <mesh position={[1.2, 0.82, -12.08]} material={led('#3aa0ff')}>
-        <planeGeometry args={[20, 0.05]} />
+      <Bx p={[-1.5, 0.45, -17.2]} s={[22, 0.9, 0.12]} m={board} />
+      <mesh position={[-1.5, 0.82, -17.13]} material={led('#3aa0ff')}>
+        <planeGeometry args={[22, 0.05]} />
       </mesh>
       {Array.from({length: 8}, (_, k) => (
-        <mesh key={k} position={[-7 + k * 2.4, 0.45, -12.08]} material={P(`panel${k}`, () => new THREE.MeshStandardMaterial({color: ['#c8202a', '#1e3e8a', '#f4c430', '#1e3e8a'][k % 4], roughness: 0.5, emissive: ['#c8202a', '#1e3e8a', '#f4c430', '#1e3e8a'][k % 4], emissiveIntensity: 0.25}))}>
+        <mesh key={k} position={[-10 + k * 2.4, 0.45, -17.13]} material={P(`panel${k}`, () => new THREE.MeshStandardMaterial({color: ['#c8202a', '#1e3e8a', '#f4c430', '#1e3e8a'][k % 4], roughness: 0.5, emissive: ['#c8202a', '#1e3e8a', '#f4c430', '#1e3e8a'][k % 4], emissiveIntensity: 0.25}))}>
           <planeGeometry args={[2.1, 0.55]} />
         </mesh>
       ))}
       {/* stands, seats, the crowd */}
       {Array.from({length: 6}, (_, r) => (
         <React.Fragment key={r}>
-          <Bx p={[1, 0.25 + r * 0.45, -20.6 - r * 0.55]} s={[26, 0.5 + r * 0.9, 0.5]} m={stand} cast={false} />
-          <Bx p={[1, 0.62 + r * 0.9, -20.42 - r * 0.55]} s={[25.5, 0.1, 0.36]} m={seat} cast={false} />
+          <Bx p={[-1, 0.25 + r * 0.45, -21.6 - r * 0.55]} s={[26, 0.5 + r * 0.9, 0.5]} m={stand} cast={false} />
+          <Bx p={[-1, 0.62 + r * 0.9, -21.42 - r * 0.55]} s={[25.5, 0.1, 0.36]} m={seat} cast={false} />
         </React.Fragment>
       ))}
       <CrowdBlocks t={t} />
@@ -709,8 +709,8 @@ export const HallPro: React.FC<{t: number}> = ({t}) => {
         </mesh>
       ))}
       {/* truss over the tables, a par can over each, two cool back lights */}
-      <Truss a={[-2.2, 4.8, 0.9]} b={[15, 4.8, -2.6]} />
-      <Truss a={[-2.2, 4.8, -2.4]} b={[15, 4.8, -5.9]} />
+      <Truss a={[0.9, 4.8, 2.5]} b={[-3.6, 4.8, -16]} />
+      <Truss a={[-1.2, 4.8, 2.5]} b={[-5.7, 4.8, -16]} />
       {TABLES.map((c, i) => {
         const p: V3 = [c[0] - 0.1, 4.62, c[2] + 0.55];
         return (
@@ -720,10 +720,10 @@ export const HallPro: React.FC<{t: number}> = ({t}) => {
           </React.Fragment>
         );
       })}
-      {[1.5, 10.5].map((x, k) => (
+      {[0, 1].map((x, k) => (
         <React.Fragment key={k}>
-          <ParCan p={[x, 4.4, -3]} to={[1.1, 0, -5 - 2 * k]} color="#5a8aff" a={q(0.05 * L.house)} />
-          <Spot p={[x, 4.4, -3]} target={[1.1, 0.8, -5]} color="#6a96ff" intensity={4 * L.house} angle={0.7} shadow={false} />
+          <ParCan p={[2.6 - 1.2 * k, 4.4, -3 - 7 * k]} to={[-1 - 1.5 * k, 0, -4 - 7 * k]} color="#5a8aff" a={q(0.05 * L.house)} />
+          <Spot p={[2.6 - 1.2 * k, 4.4, -3 - 7 * k]} target={[-1 - 1.5 * k, 0.8, -4 - 7 * k]} color="#6a96ff" intensity={4 * L.house} angle={0.7} shadow={false} />
         </React.Fragment>
       ))}
       <Spot p={[1.1, 3, 6]} target={[1.1, 0.8, -2]} color="#ffd8b0" intensity={1.6 * L.house} angle={0.6} shadow={false} />
