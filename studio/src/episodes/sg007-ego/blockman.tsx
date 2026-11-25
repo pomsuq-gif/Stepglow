@@ -76,7 +76,9 @@ export const BlockMan: React.FC<{j: J3; idx: number; spent: number; energy: numb
   const fwd = j.fwd;
   const pel = w(add(j.hip[0], mul(side, HB.hipZ)));
   const shc = w(j.shc);
-  const head = w(add(j.head, mul(up, 0.02)));
+  // the head sits right on the shoulders: a short neck, then the block (keeps the rig's nod / tilt offset)
+  const nodOff = sub(j.head, add(j.chest, mul(up, HB.gap + HB.headR)));
+  const head = add(add(shc, mul(up, 0.19)), mul(nodOff, K3));
   const arms = (noArm ? [1] : [0, 1]).map((i) => [w(j.sh[i]), w(j.el[i]), w(j.hd[i])] as [V3, V3, V3]);
   const legs = [0, 1].map((i) => [w(j.hip[i]), w(j.kn[i]), w(j.ft[i])] as [V3, V3, V3]);
   const flatF = norm([fwd[0], 0, fwd[2]]);
@@ -87,7 +89,7 @@ export const BlockMan: React.FC<{j: J3; idx: number; spent: number; energy: numb
       <Blk a={add(pel, mul(up, -0.05))} b={add(shc, mul(up, 0.05))} w={0.31} d={0.18} side={side} m={mTorso} />
       <Blk a={add(pel, mul(up, -0.045))} b={add(pel, mul(up, 0.035))} w={0.325} d={0.195} side={side} m={toon(g('#2a2630'))} />
       {/* neck and head */}
-      <Blk a={shc} b={add(shc, mul(up, 0.09))} w={0.08} d={0.08} side={side} m={mLimb} />
+      <Blk a={shc} b={add(shc, mul(up, 0.06))} w={0.09} d={0.09} side={side} m={mLimb} />
       <Cube p={head} s={[0.29, 0.28, 0.27]} basis={[side, up, fwd]} m={mHead} />
       {arms.map(([s, el, h], i) => (
         <React.Fragment key={`a${i}`}>
