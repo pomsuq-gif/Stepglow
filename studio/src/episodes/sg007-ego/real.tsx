@@ -11,7 +11,7 @@ import {PEG, solveR, TOP, TY} from './rig';
 import {CartoonMan, type Design} from './cartoon';
 import {Cracks, lights} from './World';
 import {K as KT, hit} from './grid';
-import {WALL} from './plan';
+import {crownTable, FIN, WALL} from './plan';
 import {BlockMan} from './blockman';
 
 /**
@@ -658,6 +658,10 @@ void main(){ float f = pow(abs(dot(normalize(vN), normalize(vV))), 1.6); float a
 const BEAM_VERT = `varying vec2 vUv; varying vec3 vN; varying vec3 vV; void main(){ vUv = uv; vec4 mv = modelViewMatrix * vec4(position, 1.0); vN = normalize(normalMatrix * normal); vV = -mv.xyz; gl_Position = projectionMatrix * mv; }`;
 const beamMat = (c: string, a: number) => P(`beam${c}${a}`, () => new THREE.ShaderMaterial({vertexShader: BEAM_VERT, fragmentShader: BEAM_FRAG, transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, uniforms: {uC: {value: new THREE.Color(c)}, uA: {value: a}}, fog: false}));
 
+/** each table's light: warm for Motivation, flat and grey-green for Laziness, gold for Talent, violet for Obsession, clean cold white for Discipline */
+const SPOTC = ['#ffc890', '#c8d8cc', '#ffe08a', '#e2b4ff', '#e4f2ff'];
+const SPOTI = [1, 0.62, 1.05, 1, 1.1];
+
 /** the runway along the row of tables: centre and angle */
 /** x of truss line k (0 = right, 1 = left) at depth z: the par cans hang from it */
 const trussX = (z: number, k: number) => (k ? -1.2 : 0.9) + (z - 2.5) * (4.5 / 18.5);
@@ -724,8 +728,8 @@ export const HallPro: React.FC<{t: number}> = ({t}) => {
         const p: V3 = [trussX(c[2] + 0.55, 0), 4.56, c[2] + 0.55];
         return (
           <React.Fragment key={i}>
-            <ParCan p={p} to={[c[0], 0, c[2]]} color="#ffe8c8" a={q(0.06 * L.spots[i])} />
-            <Spot p={p} target={[c[0], 0.6, c[2]]} color="#ffe6c4" intensity={8 * L.spots[i]} angle={0.5} shadow={i === 0 || i === 2 || i === 4} />
+            <ParCan p={p} to={[c[0], 0, c[2]]} color={SPOTC[i]} a={q(0.06 * L.spots[i])} />
+            <Spot p={p} target={[c[0], 0.6, c[2]]} color={SPOTC[i]} intensity={8 * L.spots[i] * SPOTI[i]} angle={0.5} shadow={i === 0 || i === 2 || i === 4} />
           </React.Fragment>
         );
       })}
@@ -735,6 +739,7 @@ export const HallPro: React.FC<{t: number}> = ({t}) => {
           <Spot p={[trussX(-5 - 6 * k, 1), 4.56, -5 - 6 * k]} target={[-1 - 1.5 * k, 0.8, -4 - 7 * k]} color="#6a96ff" intensity={7 * L.house} angle={0.7} shadow={false} />
         </React.Fragment>
       ))}
+      <FinaleLights t={t} />
       <Spot p={[1.1, 3, 6]} target={[1.1, 0.8, -2]} color="#ffd8b0" intensity={1.6 * L.house} angle={0.6} shadow={false} />
       <hemisphereLight args={['#8aa0d8', '#3a2414', 0.03 + 0.12 * L.house]} />
       <Spot p={[WALL.x * K3 + 1.2, 4.4, WALL.z * K3 + 0.6]} target={[WALL.x * K3 + 0.3, 0.4, WALL.z * K3]} color="#ffe6c4" intensity={5 * L.house * (t > KT.slam ? 1 : 0.4)} angle={0.5} shadow={false} />
@@ -806,9 +811,20 @@ export const BlockFx: React.FC<{t: number}> = ({t}) => {
     const k = Math.min(ct, tl);
     const roll = Math.max(0, Math.min(ct - tl, 0.9));
     const e = roll - (roll * roll) / 1.8;
-    const p: V3 = ct < tl ? [h0[0] + v[0] * ct, h0[1] + 0.1 + v[1] * ct - 0.5 * G9 * ct * ct, h0[2] + v[2] * ct] : [h0[0] + v[0] * tl + 0.4 * e, 0.035, h0[2] + v[2] * tl + 0.6 * e];
+    let p: V3 = ct < tl ? [h0[0] + v[0] * ct, h0[1] + 0.1 + v[1] * ct - 0.5 * G9 * ct * ct, h0[2] + v[2] * ct] : [h0[0] + v[0] * tl + 0.4 * e, 0.035, h0[2] + v[2] * tl + 0.6 * e];
+    let rot: V3 = [k * 12 * (ct < tl ? 1 : 0), k * 5 + e * 4, ct < tl ? k * 7 : (Math.PI / 2) * Math.min(1, roll * 4)];
+    if (t >= FIN.pick && t < FIN.place) {
+      // in Discipline's hand, turning upright as he lifts it
+      const dj = solveR(CAST[5](t).rig);
+      p = add(W3(dj.hd[0], [0, 0, 0], K3), [0, 0.07, 0]);
+      const u = Math.min(1, (t - FIN.pick) / 0.4);
+      rot = [rot[0] * (1 - u), rot[1] * (1 - u) + 0.5 * u, rot[2] * (1 - u)];
+    } else if (t >= FIN.place) {
+      p = crownTable();
+      rot = [0, 0.5, 0];
+    }
     out.push(
-      <group key="crown" position={p} rotation={[k * 12 * (ct < tl ? 1 : 0) + (ct < tl ? 0 : 0.0), k * 5 + e * 4, ct < tl ? k * 7 : Math.PI / 2 * Math.min(1, roll * 4)]}>
+      <group key="crown" position={p} rotation={rot}>
         <Bx p={[0, 0, 0]} s={[0.24, 0.06, 0.23]} m={gold} />
         {[-1, 0, 1].map((n) => (
           <React.Fragment key={n}>
@@ -820,7 +836,7 @@ export const BlockFx: React.FC<{t: number}> = ({t}) => {
     );
   }
   // stars round Ego's head once he sits against the board
-  const on = Math.min(1, Math.max(0, (t - KT.slam - 1.0) / 0.3));
+  const on = Math.min(1, Math.max(0, (t - KT.slam - 1.0) / 0.3)) * (1 - Math.min(1, Math.max(0, (t - FIN.place) / 0.6)));
   if (on > 0) {
     const j = solveR(CAST[0](t).rig);
     const hd = add(W3(j.shc, [0, 0, 0], K3), mul(j.up, 0.23));
@@ -855,16 +871,25 @@ const ProFx: React.FC<{t: number; st: ReturnType<typeof CAST[0]>[]}> = ({t, st})
       {st.map((s, i) => {
         if (t < APPEAR[i]) return null;
         // Ego always carries a little of his red; the rest only in the fight
-        const amt = i === 0 ? Math.max(0.18, s.aura) * (t > KT.slam + 0.3 ? 0.3 : 1) : s.aura;
+        const amt = i === 0 ? s.aura * (t > KT.slam + 0.3 ? 0 : 1) : s.aura;
         if (amt < 0.03) return null;
         const jj = solveR(s.rig);
-        // twice over: the flames read against the lit hall
+        // each one burns (or doesn't) in his own way
+        if (i === 2 || i === 3 || i === 5) return null;
         return (
           <React.Fragment key={i}>
             <FlameAura t={t} j={jj} amt={amt} color={COL[i]} seed={i * 1000} />
           </React.Fragment>
         );
       })}
+      {/* Motivation burns out: his flame turns to grey smoke */}
+      <FlameAura t={t} j={solveR(st[1].rig)} amt={0.9 * sm(2.3, 2.9) * (1 - sm(3.9, 4.6))} color="#8c8a92" seed={7100} />
+      {/* Talent: gold glints, easy and sure of himself */}
+      <Sparkle t={t} j={solveR(st[3].rig)} amt={sm(10.5, 11.2) * (1 - sm(KT.w3, KT.w3 + 0.25))} />
+      {/* Obsession: violet fire with arcs cracking through it */}
+      <Arcs t={t} j={solveR(st[4].rig)} amt={sm(18.7, 19.2) * (1 - sm(KT.broke, KT.broke + 0.15))} />
+      {/* Discipline: no fire — calm rings of cold light on the floor */}
+      <CalmRings t={t} j={solveR(st[5].rig)} amt={st[5].aura} />
       <Cracks c={c3} seed={3} n={9} len={0.7} grow={sm(12.9, 15.0) + 0.4 * sm(KT.w3, KT.w3 + 0.2)} heat={0.25 * sm(12.9, 13.5) * (1 - sm(16, 17))} t={t} />
       <Cracks c={c4} seed={7} n={8} len={0.6} grow={sm(KT.wont, KT.broke) + 0.5 * sm(KT.broke, KT.broke + 0.2)} heat={0.25 * sm(KT.wont, KT.wont + 0.4) * (1 - sm(25, 26))} t={t} />
       <Cracks c={c5} seed={13} n={8} len={0.55} grow={sm(KT.seen, KT.slam)} heat={0.2 * sm(KT.seen, KT.seen + 0.4) * (1 - sm(KT.slam, KT.slam + 0.4))} t={t} />
@@ -1026,4 +1051,92 @@ const Dust: React.FC<{t: number; at: number; p: V3; seed: number}> = ({t, at, p,
   });
   if (dt < 0 || dt > 1.2) return null;
   return <instancedMesh ref={ref} args={[flameGeo, flameMat('#cbbfae'), N]} frustumCulled={false} renderOrder={6} />;
+};
+
+/* ───────────── per-character effects ───────────── */
+
+const glowMat = (c: string, k = 2.2) => P(`gm${c}${k}`, () => new THREE.MeshBasicMaterial({color: new THREE.Color(c).multiplyScalar(k)}));
+
+/** Talent: little four-point gold glints that twinkle round him */
+const Sparkle: React.FC<{t: number; j: J3; amt: number}> = ({t, j, amt}) => {
+  if (amt < 0.03) return null;
+  const c = W3(j.chest, [0, 0, 0], K3);
+  const m = glowMat('#ffe7a0', 2.6);
+  return (
+    <>
+      {Array.from({length: 16}, (_, i) => {
+        const per = 0.7 + 0.5 * R(i + 400);
+        const ph = (((t / per + R(i + 401)) % 1) + 1) % 1;
+        const cyc = Math.floor(t / per + R(i + 401));
+        const ox = (R(i * 7 + cyc) - 0.5) * 0.9;
+        const oy = (R(i * 11 + cyc) - 0.35) * 1.3;
+        const oz = (R(i * 13 + cyc) - 0.5) * 0.5;
+        const s = Math.sin(Math.PI * ph) * 0.07 * amt;
+        if (s < 0.004) return null;
+        const p: V3 = [c[0] + ox, c[1] + oy, c[2] + oz];
+        return (
+          <React.Fragment key={i}>
+            <Bx p={p} s={[s * 2.2, s * 0.35, s * 0.35]} m={m} cast={false} />
+            <Bx p={p} s={[s * 0.35, s * 2.2, s * 0.35]} m={m} cast={false} />
+          </React.Fragment>
+        );
+      })}
+    </>
+  );
+};
+
+/** Obsession: short violet arcs jumping between points on his body, redrawn ~14 times a second */
+const Arcs: React.FC<{t: number; j: J3; amt: number}> = ({t, j, amt}) => {
+  if (amt < 0.05) return null;
+  const m = glowMat('#e6c8ff', 2.8);
+  const pts: V3[] = [j.head, j.chest, j.sh[0], j.sh[1], j.el[1], j.hd[1], j.kn[0], j.kn[1], j.hip[0]].map((p) => W3(p, [0, 0, 0], K3));
+  const step = Math.floor(t * 14);
+  const out: React.ReactNode[] = [];
+  for (let a = 0; a < 3; a++) {
+    if (R(step * 3 + a) > 0.55 + 0.4 * amt) continue;
+    const p0 = pts[Math.floor(R(step * 7 + a) * pts.length)];
+    const p1 = pts[Math.floor(R(step * 9 + a + 3) * pts.length)];
+    let prev: V3 = [p0[0] + (R(step + a) - 0.5) * 0.25, p0[1], p0[2] + (R(step + a + 1) - 0.5) * 0.2];
+    for (let s = 1; s <= 5; s++) {
+      const k = s / 5;
+      const n: V3 = [lerp3(p0[0], p1[0], k) + (R(step * 13 + a * 5 + s) - 0.5) * 0.18, lerp3(p0[1], p1[1], k) + (R(step * 17 + a * 5 + s) - 0.5) * 0.18 + 0.15, lerp3(p0[2], p1[2], k) + (R(step * 19 + a * 5 + s) - 0.5) * 0.12];
+      out.push(<Seg key={`${a}-${s}`} a={prev} b={n} r={0.007} m={m} cast={false} />);
+      prev = n;
+    }
+  }
+  return <>{out}</>;
+};
+const lerp3 = (a: number, b: number, k: number) => a + (b - a) * k;
+
+/** Discipline: slow rings of cold light spreading on the floor around his feet, and a pale column over him */
+const CalmRings: React.FC<{t: number; j: J3; amt: number}> = ({t, j, amt}) => {
+  if (amt < 0.03) return null;
+  const pel = W3(add(j.hip[0], mul(j.side, HB.hipZ)), [0, 0, 0], K3);
+  return (
+    <>
+      {[0, 1, 2].map((n) => {
+        const k = (((t / 1.8 + n / 3) % 1) + 1) % 1;
+        const R0 = 0.25 + 1.3 * k;
+        const m = P(`calm${n}`, () => new THREE.MeshBasicMaterial({color: new THREE.Color('#9fe0ff').multiplyScalar(1.6), transparent: true, depthWrite: false}));
+        (m as THREE.MeshBasicMaterial).opacity = Math.min(1, amt) * (1 - k) * 0.85;
+        return <mesh key={n} geometry={ringGeo} material={m} position={[pel[0], 0.012 + n * 0.001, pel[2]]} rotation={[-Math.PI / 2, 0, 0]} scale={[R0, R0, 1]} renderOrder={9} />;
+      })}
+      <mesh position={[pel[0], 2.4, pel[2]]} renderOrder={7} material={beamMat('#bfe8ff', Math.round(Math.min(1, amt) * 20) / 20 * 0.06)}>
+        <cylinderGeometry args={[0.35, 0.55, 4.8, 32, 1, true]} />
+      </mesh>
+    </>
+  );
+};
+
+/** the end: a warm key from the front on Discipline and a cold rim behind him, as the hall goes down */
+const FinaleLights: React.FC<{t: number}> = ({t}) => {
+  const k = Math.min(1, Math.max(0, (t - FIN.hold) / (FIN.place - FIN.hold)));
+  if (k <= 0) return null;
+  const d = W3(solveR(CAST[5](t).rig).chest, [0, 0, 0], K3);
+  return (
+    <>
+      <Spot p={[d[0] + 1.1, 3.0, d[2] + 3.2]} target={d} color="#fff0dc" intensity={3.2 * k} angle={0.32} shadow={false} />
+      <Spot p={[d[0] - 0.6, 3.6, d[2] - 2.6]} target={d} color="#8fd0ff" intensity={6 * k} angle={0.4} shadow={false} />
+    </>
+  );
 };

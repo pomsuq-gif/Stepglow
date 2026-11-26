@@ -49,6 +49,9 @@ export type GripOpts = {
   t?: number;
   /** 0..1: the free hand on the peg (1) or hanging (0) */
   peg?: number;
+  /** what the free hand does: holds the peg, props the chin, rests on the hip, slams the table (slamK 0..1 = up), sits behind the back */
+  free?: 'peg' | 'chin' | 'hip' | 'slam' | 'back';
+  slamK?: number;
   /** slouch (Laziness): the shoulders drop, the head hangs */
   slouch?: number;
   /** head nod down / look at the camera */
@@ -89,7 +92,24 @@ export const grip = (o: GripOpts): Rig => {
   // the free (left) hand: on the peg at the table's corner, or hanging
   const pg: V3 = [sd * PEG[0], PEG[1], sd * PEG[2]];
   const hang: V3 = add(add(shc, mul(side, HB.shZ + 0.05)), [0, -ARM * 0.85, 0]);
-  const hand1 = mix3(hang, pg, clamp(o.peg ?? 1));
+  const pel0 = sub(shc, mul(up, SHC));
+  let hand1 = mix3(hang, pg, clamp(o.peg ?? 1));
+  let pole1: V3 = add(add(mul(side, 0.8), [0, -0.4, 0]), mul(fwd, -0.3));
+  const fr = o.free ?? 'peg';
+  if (fr === 'chin') {
+    hand1 = add(add(add(shc, mul(up, 0.1)), mul(fwd, 0.2)), mul(side, 0.03));
+    pole1 = add([0, -1, 0], mul(side, 0.4));
+  } else if (fr === 'hip') {
+    hand1 = add(add(pel0, mul(side, HB.hipZ + 0.17)), mul(up, 0.1));
+    pole1 = add(mul(side, 1), mul(fwd, -0.6));
+  } else if (fr === 'back') {
+    hand1 = add(add(add(pel0, mul(fwd, -0.2)), mul(up, 0.12)), mul(side, -0.02));
+    pole1 = add(mul(side, 1), mul(fwd, -0.4));
+  } else if (fr === 'slam') {
+    const k = clamp(o.slamK ?? 0);
+    hand1 = [sd * 0.24, TY + R_HD + 0.005 + 0.3 * k, sd * 0.2];
+    pole1 = add(mul(side, 1), [0, 0.3, 0]);
+  }
   const nod = o.nod ?? 0;
   return {
     pel,
@@ -97,7 +117,7 @@ export const grip = (o: GripOpts): Rig => {
     fwd,
     head: add([-sd * 0.03 * (1 - sl), -0.05 * nod - 0.06 * sl, 0], mul(jit, 1.5)),
     hand: [H, hand1],
-    elbow: [sub(E, S), add(add(mul(side, 0.8), [0, -0.4, 0]), mul(fwd, -0.3))],
+    elbow: [sub(E, S), pole1],
     foot: [f0, f1],
     knee: [add(fwd, [0, 0, -sd * 0.15]), add(fwd, [0, 0, sd * 0.3])],
   };
@@ -218,8 +238,8 @@ export const lie = (o: {face: 'down' | 'up'; a?: number; arms?: 'push' | 'out' |
     ],
     foot: [foot(0), foot(1)],
     knee: [
-      [-0.2, o.face === 'down' ? -0.4 : 1, 0],
-      [0.2, o.face === 'down' ? -0.4 : 1, 0],
+      o.face === 'down' ? [-1, 0.4, 0] : [-0.2, 1, 0],
+      o.face === 'down' ? [1, 0.4, 0] : [0.2, 1, 0],
     ],
   };
   void dir;

@@ -2,7 +2,7 @@ import {clamp, easeInOut, lerp} from '../nc001-work-smart/anim';
 import type {Cam, V3} from '../nc001-work-smart/kit3d';
 import {add, K3, mul, W3} from '../sg003-same-bar/rig3';
 import {hit, K, SECONDS, shake} from './grid';
-import {CAST, tw, WALL} from './plan';
+import {CAST, crownRest, crownTable, FIN, tw, WALL} from './plan';
 import {clasp, PIN, solveR} from './rig';
 
 /**
@@ -48,15 +48,7 @@ const glide = (f: (t: number) => V3, t: number): V3 => {
   return mul(s, 1 / n);
 };
 
-/** where Ego's crown comes to rest (same throw as in real.tsx BlockFx) */
-const crownRest = (): V3 => {
-  const h0 = W(J(0, K.slam + 0.05).head);
-  const v: V3 = [-1.2, 2.4, 0.8];
-  const tl = (v[1] + Math.sqrt(v[1] * v[1] + 2 * 9.8 * (h0[1] + 0.1))) / 9.8;
-  return [h0[0] + v[0] * tl + 0.4 * 0.45, 0.04, h0[2] + v[2] * tl + 0.6 * 0.45];
-};
-let crownCache: V3 | null = null;
-const crown = () => (crownCache ??= crownRest());
+
 
 type Shot = {at: number; cut?: boolean; c: (t: number, k: number) => C};
 const B = K;
@@ -111,14 +103,16 @@ const SHOTS: Shot[] = [
   {at: B.slam, cut: true, c: () => aim([(WALL.x * K3 + tw(4)[0]) / 2 - 0.2, 1.45, tw(4)[2]], {viewH: 5.6, pitch: 6, yaw: 4, fov: 32})},
   // 18 · at the board: slumped, stars
   {at: B.blink, cut: true, c: (t, k) => aim([WALL.x * K3 + 0.55, 0.7, tw(4)[2]], {viewH: lerp(3.2, 2.6, k), pitch: 11, yaw: lerp(40, 32, k), fov: 30})},
-  // 19 · the crane down the row: the beaten on the floor, Discipline standing at the end in his light
-  {at: B.all, cut: true, c: (t, k) => aim([tw(2)[0] + 0.2, 0.8, tw(2)[2]], {viewH: lerp(7.0, 7.8, easeInOut(k)), pitch: lerp(12, 17, k), yaw: lerp(-8, -4, k), fov: 40})},
-  // 20 · the end: low hero on Discipline, from the front, wide lens
-  {at: B.end - 0.1, cut: true, c: (t, k) => {
-    void crown;
-    const d = chest(5, t);
-    return aim(add(d, [0, -0.25, 0]), {viewH: lerp(3.2, 2.9, k), pitch: -6, yaw: lerp(-45, -38, k), fov: 55});
-  }},
+  // 19 · the crane down the row: the beaten on the floor, Discipline walking to the crown at the end
+  {at: B.all, cut: true, c: (t, k) => aim([tw(2)[0] + 0.2, 0.8, tw(2)[2]], {viewH: lerp(7.0, 7.6, easeInOut(k)), pitch: lerp(12, 15, k), yaw: lerp(-8, -5, k), fov: 40})},
+  // 20 · low on the floor: the crown in front, Discipline coming for it
+  {at: FIN.go + 0.55, cut: true, c: (t, k) => aim(mid(crownRest(), chest(5, t), 0.55), {viewH: lerp(2.9, 2.4, k), pitch: -3, yaw: 28, fov: 38})},
+  // 21 · close: his hand takes it; he looks at it
+  {at: FIN.bend + 0.3, cut: true, c: (t, k) => aim(mid(add(crownRest(), [0, 0.2, 0]), head(5, t), 0.5), {viewH: lerp(1.9, 1.7, k), pitch: 4, yaw: lerp(4, -4, k), fov: 40})},
+  // 22 · he carries it to the table: a dolly alongside
+  {at: FIN.hold + 0.15, c: (t) => aim(glide((tt) => chest(5, tt), t), {viewH: 2.7, pitch: 3, yaw: -24, fov: 36})},
+  // 23 · the end: low, the crown left on the table in front, Discipline standing tall in the one light left
+  {at: FIN.place + 0.15, cut: true, c: (t, k) => aim(add(mid(crownTable(), chest(5, t), 0.6), [0, 0.55, 0]), {viewH: lerp(2.7, 2.4, easeInOut(k)), pitch: -7, yaw: lerp(-10, -4, k), fov: 42})},
 ];
 
 const BLEND = 0.4;

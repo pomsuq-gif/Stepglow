@@ -24,7 +24,9 @@ const q = (x: number, n = 16) => Math.round(clamp(x) * n) / n;
 export const lights = (t: number) => {
   const out = ss(t, K.dark - 0.04, K.dark + 0.02);
   const back = ss(t, K.t4 - 0.25, K.t4 + 0.05);
-  const house = 1 - out * (1 - back);
+  // the end: the hall goes down, only Discipline's light stays
+  const fin = ss(t, 36.6, 37.5);
+  const house = (1 - out * (1 - back)) * (1 - 0.75 * fin);
   // the active table is brightest
   const active = t < 4.9 ? 0 : t < 9.45 ? 1 : t < 16.2 ? 2 : t < 25 ? 3 : 4;
   const spots = [0, 1, 2, 3, 4].map((i) => {
@@ -41,7 +43,7 @@ export const lights = (t: number) => {
     void active;
     // in the dark: Obsession's spot clunks on, then Discipline's far away; Ego keeps a red glow
     const dark = i === 3 ? ss(t, 16.72, 16.78) : i === 4 ? ss(t, K.more - 0.03, K.more + 0.03) : 0;
-    return lerp(dark, base, house);
+    return lerp(dark, base, house / Math.max(0.25, 1 - 0.75 * fin)) * (i === 4 ? 1 + 0.4 * fin : 1 - 0.85 * fin);
   });
   return {house, spots};
 };

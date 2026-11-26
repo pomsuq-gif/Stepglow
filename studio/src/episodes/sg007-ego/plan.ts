@@ -2,7 +2,8 @@ import {clamp, easeInOut, easeOut, lerp, ss} from '../nc001-work-smart/anim';
 import type {V3} from '../nc001-work-smart/kit3d';
 import {K3, rigAt, type Rig} from '../sg003-same-bar/rig3';
 import {BEAT, K} from './grid';
-import {flung, grip, kneel, lie, PIN, place, slump, splat, standR, type StandOpts} from './rig';
+import {flung, grip, kneel, lie, PIN, place, rotY, slump, solveR, splat, standR, TY, type StandOpts} from './rig';
+import {sub as sub3} from '../sg003-same-bar/rig3';
 
 /**
  * SG007 — Ego vs Everyone (arm wrestling). Five tables in a row going away from the camera, one opponent at each:
@@ -133,7 +134,7 @@ const EGO_IN: V3 = [1.9, 0, 2.8];
 const egoRig = (t: number): Rig => {
   // table 1
   if (t < 1.32) {
-    const r = walk(t, -0.15, 1.32, EGO_IN, egoSpot(0), {arms: 'swagger', proud: 1});
+    const r = walk(t, -0.15, 1.32, EGO_IN, egoSpot(0), {arms: 'swagger', proud: 1}, [add3(TP[0], [0.35, 0, 1.15]), add3(TP[0], [-0.95, 0, 0.7])]);
     return t > 1.0 ? rigAt(t, [[1.0, r], [1.32, at(egoSpot(0), P2, {proud: 1})]]) : r;
   }
   const into = (i: number, a: number, b: number, m: number) => (t < b ? rigAt(t, [[a, at(egoSpot(i), P2, {proud: 0.5})], [b, gripAt(i, {side: -1, phi: phiAt(b, m), t})]]) : null);
@@ -184,6 +185,8 @@ const egoRig = (t: number): Rig => {
     [K.slam + fl, sp],
     [K.slam + fl + 0.22, place(splat(), add3(wallP, [0, 0.33, 0]), P2)],
     [K.slam + fl + 0.75, place(slump({tilt: 1}), add3(wallP, [0.26, 0, 0]), P2)],
+    [FIN.place, place(slump({tilt: 1}), add3(wallP, [0.26, 0, 0]), P2)],
+    [FIN.place + 0.8, place(slump({tilt: -0.7}), add3(wallP, [0.26, 0, 0]), P2)],
   ]);
 };
 
@@ -193,10 +196,11 @@ const egoState = (t: number): State => {
   const w = (a: number) => (t > a ? Math.exp(-(t - a) * 2.2) : 0);
   const m3 = ss(t, 12.4, 13.6) * (1 - ss(t, 16.2, 16.6));
   const dark = ss(t, 16.5, 17.5) * (1 - ss(t, 18.2, 18.6)) * 0.45;
-  const m4 = ss(t, 18.3, 19.2) * (1 - ss(t, 24.2, 25.2)) * (0.75 + 0.35 * ss(t, K.wont, K.wont + 0.4));
-  const m5 = ss(t, K.sure - 0.1, K.sure + 0.5) * (1 - ss(t, K.slam, K.slam + 0.3)) * (1 + 0.25 * ss(t, K.seen, K.slam));
+  const m4 = ss(t, K.never - 0.3, K.never + 0.4) * (1 - ss(t, 24.2, 25.2)) * (0.75 + 0.35 * ss(t, K.wont, K.wont + 0.4));
+  const m5 = ss(t, K.sure - 0.1, K.sure + 0.5) * (1 - 0.85 * ss(t, K.seen, K.slam - 0.15));
   const flick = t > K.seen && t < K.slam ? 0.85 + 0.15 * Math.sin(t * 37) : 1;
-  s.aura = Math.max(0.5 * w(K.w1) + 0.35 * w(K.w2), m3 * 1.1 + 0.5 * w(K.w3), dark, m4, m5 * flick, 0.12 * ss(t, 0.3, 1));
+  s.aura = Math.max(m3 * 1.1 + 0.6 * w(K.w3), dark * 0.7, m4, m5 * flick);
+  void w;
   s.energy = 1 + 0.6 * s.aura - 0.8 * ss(t, K.slam, K.slam + 0.5);
   s.strain = Math.max(ss(t, 12.3, 13) * (1 - ss(t, K.w3, K.w3 + 0.1)), ss(t, 18.3, 19) * (1 - ss(t, K.broke, K.broke + 0.1)), ss(t, K.sure, K.sure + 0.4) * (1 - ss(t, K.slam, K.slam + 0.1)));
   s.cracks = 1.0 * ss(t, K.sure + 0.4, K.slam - 0.2);
@@ -246,8 +250,8 @@ const lazState = (t: number): State => {
       [5.75, at(oppSpot(i), -P2, {lean: -12, arms: 'stretch', head: [0, 0.03, -0.07]})],
       [6.15, slouchy(t)],
     ]);
-  else if (t < GRIP.m2[0]) rig = rigAt(t, [[6.2, slouchy(t)], [GRIP.m2[0], og(m, GRIP.m2[0], {slouch: 1, peg: 0.2, lean: 22})]]);
-  else if (t < K.w2 + 0.25) rig = og(m, t, {slouch: 1, peg: 0.2, lean: 22, nod: 0.6});
+  else if (t < GRIP.m2[0]) rig = rigAt(t, [[6.2, slouchy(t)], [GRIP.m2[0], og(m, GRIP.m2[0], {slouch: 1, free: 'chin', lean: 22})]]);
+  else if (t < K.w2 + 0.25) rig = og(m, t, {slouch: 1, free: 'chin', lean: 22, nod: 0.3});
   else
     rig = rigAt(t, [
       [K.w2 + 0.25, og(m, K.w2 + 0.25, {slouch: 1, peg: 0, nod: 0.6})],
@@ -268,7 +272,7 @@ const talState = (t: number): State => {
   else if (t < GRIP.m3[0]) rig = rigAt(t, [[10.4, cool(10.4)], [GRIP.m3[0], og(m, GRIP.m3[0])]]);
   else if (t < K.w3 + 0.16) {
     const win = ss(t, 12.2, 13.2);
-    rig = og(m, t, {strain: 0.5 + 0.3 * win, lean: 30 + 4 * win});
+    rig = og(m, t, {strain: 0.3 + 0.3 * win, lean: 26 + 4 * win, free: 'hip'});
   } else rig = thrown(t, K.w3 + 0.16, og(m, K.w3 + 0.16, {strain: 1}), i, place(lie({face: 'up', arms: 'out', knee: 0.3}), add3(TP[i], [1.15, 0, -1.15]), Math.PI - 0.6), 0.6);
   const s = S0(rig, TINT.tal, 1.1);
   s.aura = 0.35 * ss(t, 12.2, 13) * (1 - ss(t, K.w3, K.w3 + 0.2));
@@ -278,6 +282,17 @@ const talState = (t: number): State => {
   return s;
 };
 
+/** Obsession's free fist: up between the beats, down on the table on every beat */
+const slamK = (t: number) => {
+  if (t < 18.9) return 0;
+  const ph = (((t - T0b) / BEAT) % 1 + 1) % 1;
+  if (ph < 0.12) return 0;
+  if (ph < 0.7) return easeOut((ph - 0.12) / 0.58);
+  const k = (ph - 0.7) / 0.3;
+  return 1 - k * k * k;
+};
+const T0b = 0.2;
+
 const obsState = (t: number): State => {
   const i = 3;
   const m = 4;
@@ -285,7 +300,7 @@ const obsState = (t: number): State => {
   const box = (tt: number) => at(add3(oppSpot(i), [0, Math.max(0, Math.sin((tt * Math.PI * 2) / BEAT)) * 0.025, 0]), -P2 - 0.15, {lean: 10, crouch: 0.06, arms: 'box', beat: tt / (BEAT * 2)});
   if (t < 18.0) rig = box(t);
   else if (t < GRIP.m4[0]) rig = rigAt(t, [[18.0, box(18.0)], [GRIP.m4[0], og(m, GRIP.m4[0])]]);
-  else if (t < K.broke + 0.12) rig = og(m, t, {strain: 1, lean: 36});
+  else if (t < K.broke + 0.12) rig = og(m, t, {strain: 1, lean: 36, free: 'slam', slamK: slamK(t)});
   else
     rig = rigAt(t, [
       [K.broke + 0.12, og(m, K.broke + 0.12, {strain: 1, lean: 36, peg: 1})],
@@ -301,23 +316,74 @@ const obsState = (t: number): State => {
   return s;
 };
 
+/* ───────────── the end: Discipline picks up the crown Ego lost and leaves it on the table ───────────── */
+
+export const FIN = {go: 32.85, bend: 34.0, pick: 34.5, hold: 35.1, reach: 36.3, place: 36.7, done: 37.15};
+/** where the crown lands (world), the same throw as real.tsx BlockFx */
+export const crownRest = (): V3 => {
+  const j = solveR(CAST[0](K.slam + 0.05).rig);
+  const h0: V3 = [j.head[0] * K3, j.head[1] * K3, j.head[2] * K3];
+  const v: V3 = [-1.2, 2.4, 0.8];
+  const tl = (v[1] + Math.sqrt(v[1] * v[1] + 2 * 9.8 * (h0[1] + 0.1))) / 9.8;
+  return [h0[0] + v[0] * tl + 0.4 * 0.45, 0.035, h0[2] + v[2] * tl + 0.6 * 0.45];
+};
+let crCache: V3 | null = null;
+const crownL = (): V3 => {
+  crCache ??= crownRest();
+  return [crCache[0] / K3, crCache[1] / K3, crCache[2] / K3];
+};
+/** the crown's place on the last table (world) */
+export const crownTable = (): V3 => [tw(4)[0] - 0.04, TY * K3 + 0.065, tw(4)[2] + 0.14];
+/** a standing pose with the right hand on a world-space target (local units) */
+const reachTo = (p: V3, a: number, target: V3, o: StandOpts = {}) => {
+  const r = standR(o);
+  const h = rotY(sub3(target, p), -a);
+  r.hand[0] = h;
+  r.elbow = [[-0.6, -0.6, -0.3], r.elbow?.[1] ?? [0.3, -0.3, -1]];
+  return place(r, p, a);
+};
+const finale = (t: number): Rig => {
+  const c = crownL();
+  const by: V3 = add3(c, [0.45, 0, 0.18]);
+  const face = Math.atan2(c[0] - by[0], c[2] - by[2]);
+  const tbl: V3 = [crownTable()[0] / K3, crownTable()[1] / K3, crownTable()[2] / K3];
+  // he takes it round to the far side of the table and faces the hall over it
+  const at2: V3 = add3(TP[4], [0.05, 0, -0.84]);
+  const faceT = Math.atan2(tbl[0] - at2[0], tbl[2] - at2[2]);
+  if (t < FIN.bend) return walk(t, FIN.go, FIN.bend, oppSpot(4), by, {arms: 'down'}, [add3(TP[4], [0.55, 0, 0.8]), add3(TP[4], [-0.6, 0, 0.9])]);
+  const crouch = reachTo(by, face, add3(c, [0, 0.07, 0]), {crouch: 0.4, lean: 48});
+  const lookAtIt = reachTo(by, face, add3(by, [-0.12, 0.98, 0.0]), {lean: 6, head: [0, -0.03, 0.02]});
+  if (t < FIN.hold) return rigAt(t, [[FIN.bend, at(by, face, {})], [FIN.pick, crouch], [FIN.hold, lookAtIt]]);
+  if (t < FIN.reach) {
+    // carries it to the table, held in front
+    const w = walk(t, FIN.hold, FIN.reach, by, at2, {arms: 'down'}, [add3(TP[4], [-0.95, 0, 0.15]), add3(TP[4], [-0.85, 0, -0.8])]);
+    const p = w.pel;
+    const hold: V3 = rotY([-0.12, 0.96 - p[1], 0.28], 0);
+    void hold;
+    return rigAt(t, [[FIN.hold, lookAtIt], [FIN.hold + 0.25, w], [FIN.reach, w]]);
+  }
+  const put = reachTo(at2, faceT, add3(tbl, [0, 0.07, 0]), {lean: 18, crouch: 0.04});
+  const tall = at(add3(at2, [0, 0, -0.06]), -0.12, {lean: -1, proud: 0.7});
+  return rigAt(t, [[FIN.reach, at(at2, faceT, {})], [FIN.place, put], [FIN.done, tall]]);
+};
+
 const disState = (t: number): State => {
   const i = 4;
   const m = 5;
   const calm = (tt: number) => at(oppSpot(i), -P2, {lean: 1, head: [0, 0.005 * Math.sin(tt * 1.6), 0]});
   let rig: Rig;
   if (t < 26.3) rig = calm(t);
-  else if (t < GRIP.m5[0]) rig = rigAt(t, [[26.3, calm(t)], [GRIP.m5[0], og(m, GRIP.m5[0], {lean: 22, twist: 18})]]);
-  else if (t < K.slam + 0.3) rig = og(m, t, {lean: 22 + 5 * ss(t, K.slam - 0.05, K.slam + 0.1), twist: 18});
+  else if (t < GRIP.m5[0]) rig = rigAt(t, [[26.3, calm(t)], [GRIP.m5[0], og(m, GRIP.m5[0], {lean: 18, twist: 14, free: 'back'})]]);
+  else if (t < K.slam + 0.3) rig = og(m, t, {lean: 18 + 16 * ss(t, K.slam - 0.05, K.slam + 0.1), twist: 14, free: "back"});
   else
     rig = rigAt(t, [
-      [K.slam + 0.3, og(m, K.slam + 0.3, {lean: 27, twist: 18})],
+      [K.slam + 0.3, og(m, K.slam + 0.3, {lean: 34, twist: 14, free: "back"})],
       [K.slam + 1.2, at(oppSpot(i), -P2 - 0.15, {lean: 0})],
-      [33.2, at(oppSpot(i), -P2 - 0.15, {lean: 0})],
-      [34.4, at(add3(oppSpot(i), [-0.25, 0, 0.05]), -P2 - 0.6, {lean: 0, arms: 'down'})],
+      [FIN.go, at(oppSpot(i), -P2 - 0.15, {lean: 0})],
     ]);
+  if (t >= FIN.go) rig = finale(t);
   const s = S0(rig, TINT.dis, 0.95);
-  s.aura = 0.75 * ss(t, K.seen - 0.2, K.seen + 1.1) * (1 - 0.4 * ss(t, K.slam + 0.5, K.slam + 2)) + 0.25 * ss(t, 33, 35);
+  s.aura = 0.75 * ss(t, K.seen - 0.2, K.seen + 1.1) * (1 - 0.4 * ss(t, K.slam + 0.5, K.slam + 2)) + 0.5 * ss(t, FIN.place, FIN.done + 0.5);
   s.auraColor = '#7fd8ff';
   s.energy = 0.95 + 0.4 * ss(t, K.seen, K.slam);
   return s;

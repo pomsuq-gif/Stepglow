@@ -220,6 +220,27 @@ const Score: React.FC<{t: number}> = ({t}) => (
   </>
 );
 
+/** Laziness: "z"s drifting up off his head — sleepy in the fight, asleep after it */
+const Zzz: React.FC<{t: number; c: Cam}> = ({t, c}) => {
+  const on = Math.max(0.55 * ss(t, 6.7, 7.1) * (1 - ss(t, K.w2, K.w2 + 0.2)), ss(t, K.w2 + 1.0, K.w2 + 1.3) * (1 - ss(t, 10.4, 10.7)));
+  if (on < 0.02) return null;
+  const hd = W3(solveR(CAST[2](t).rig).head, [0, 0, 0], K3);
+  const [x, y] = project(c, hd[0], hd[1] + 0.2, hd[2]);
+  return (
+    <>
+      {[0, 1, 2].map((n) => {
+        const k = (((t * 0.55 + n / 3) % 1) + 1) % 1;
+        const o = on * Math.sin(Math.PI * k);
+        return (
+          <div key={n} style={{position: 'absolute', left: x + 30 + 60 * k + 10 * Math.sin(t * 2 + n), top: y - 40 - 150 * k, transform: `translate(-50%, -50%) rotate(${-12 + 8 * n}deg)`, opacity: o, ...F, fontSize: 40 + 34 * k, color: '#8ff0c8', textShadow: '0 3px 0 #0a1a14, 0 0 18px #3fd8a066'}}>
+            z
+          </div>
+        );
+      })}
+    </>
+  );
+};
+
 /** the end card: "Discipline" lands, then ">" — and "Ego" shrinks under it */
 const End: React.FC<{t: number}> = ({t}) => {
   const k1 = clamp((t - K.end) / 0.2);
@@ -230,14 +251,14 @@ const End: React.FC<{t: number}> = ({t}) => {
   const bob = Math.sin((t - K.end) * 6) * 6 * k4;
   return (
     <>
-      <div style={{position: 'absolute', left: 540, top: 1400, transform: 'translate(-50%, -50%)', textAlign: 'center', ...F}}>
+      <div style={{position: 'absolute', left: 540, top: 330, transform: 'translate(-50%, -50%)', textAlign: 'center', ...F}}>
         <div style={{fontSize: 132, lineHeight: 1, color: TINT.dis, transform: `scale(${k1 < 1 ? 2 - k1 : 1})`, opacity: clamp(k1 * 3), textShadow: `${shadow}, 0 0 60px ${TINT.dis}cc`}}>Discipline</div>
         <div style={{fontSize: 96, lineHeight: 1, whiteSpace: 'pre', opacity: clamp(k2 * 3)}}>
           <span style={{color: '#f4f7ff', textShadow: shadow, display: 'inline-block', transform: `scale(${k2 < 1 ? 1.8 - 0.8 * k2 : 1})`}}>{'> '}</span>
           <span style={{color: TINT.ego, display: 'inline-block', transform: `scale(${1 - 0.25 * k3})`, transformOrigin: '0 70%', textShadow: `${shadow}, 0 0 40px ${TINT.ego}88`}}>Ego</span>
         </div>
       </div>
-      <div style={{position: 'absolute', left: 540, top: 1600 + bob, transform: 'translate(-50%, -50%)', opacity: k4, ...F, fontSize: 58, color: '#f4f7ff', textShadow: shadow}}>Agree? ↓</div>
+      <div style={{position: 'absolute', left: 540, top: 500 + bob, transform: 'translate(-50%, -50%)', opacity: k4, ...F, fontSize: 58, color: '#f4f7ff', textShadow: shadow}}>Agree? ↓</div>
     </>
   );
 };
@@ -407,6 +428,7 @@ export const SG007Full: React.FC<{withAudio?: boolean; style?: string}> = ({with
       <StyText sty={sty}>
         <Caption t={t} />
       </StyText>
+      <Zzz t={t} c={c} />
       <Score t={t} />
       <End t={t} />
       <AbsoluteFill style={{background: '#f2f6ff', opacity: flash}} />
