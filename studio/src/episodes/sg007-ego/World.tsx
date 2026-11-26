@@ -28,8 +28,16 @@ export const lights = (t: number) => {
   // the active table is brightest
   const active = t < 4.9 ? 0 : t < 9.45 ? 1 : t < 16.2 ? 2 : t < 25 ? 3 : 4;
   const spots = [0, 1, 2, 3, 4].map((i) => {
-    // every table lit the same, so the grade doesn't jump from shot to shot
-    const base = 1;
+    // the table in play is the bright pool, the others stay dim (a smooth hand-over as Ego moves on)
+    const win: [number, number][] = [
+      [-9, 5.6],
+      [5.0, 9.9],
+      [9.4, 16.2],
+      [16.7, 25.4],
+      [K.more, 99],
+    ];
+    const [a, b] = win[i];
+    const base = 0.3 + 0.7 * ss(t, a - 0.4, a) * (1 - ss(t, b, b + 0.6));
     void active;
     // in the dark: Obsession's spot clunks on, then Discipline's far away; Ego keeps a red glow
     const dark = i === 3 ? ss(t, 16.72, 16.78) : i === 4 ? ss(t, K.more - 0.03, K.more + 0.03) : 0;

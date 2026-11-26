@@ -67,10 +67,30 @@ const gloveBasis = (y: V3): [V3, V3, V3] => {
   return [x, y, cross(x, y)];
 };
 
+/** the head turns (about the neck) toward what the character is watching, up to ~70° */
+const rotAbout = (v: V3, k: V3, a: number): V3 => {
+  const c = Math.cos(a);
+  const s = Math.sin(a);
+  const d = v[0] * k[0] + v[1] * k[1] + v[2] * k[2];
+  const x = cross(k, v);
+  return [v[0] * c + x[0] * s + k[0] * d * (1 - c), v[1] * c + x[1] * s + k[1] * d * (1 - c), v[2] * c + x[2] * s + k[2] * d * (1 - c)];
+};
+const headBasis = (side: V3, up: V3, fwd: V3, head: V3, look: V3 | null): [V3, V3, V3] => {
+  if (!look) return [side, up, fwd];
+  const d = sub(look, head);
+  const dd = d[0] * up[0] + d[1] * up[1] + d[2] * up[2];
+  const flat = sub(d, mul(up, dd));
+  if (Math.hypot(...flat) < 1e-3) return [side, up, fwd];
+  const f = norm(flat);
+  const a = Math.atan2(f[0] * side[0] + f[1] * side[1] + f[2] * side[2], f[0] * fwd[0] + f[1] * fwd[1] + f[2] * fwd[2]);
+  const ang = -Math.max(-1.2, Math.min(1.2, a));
+  return [rotAbout(side, up, ang), up, rotAbout(fwd, up, ang)];
+};
+
 /** each character's toy colour */
 export const BLOCK = ['#ef4b3f', '#f59a2e', '#3fc495', '#f2c531', '#9a6cf0', '#3ea2f0'];
 
-export const BlockMan: React.FC<{j: J3; idx: number; spent: number; energy: number; noArm?: boolean; crown: boolean; light: string; neck?: number; other?: V3 | null}> = ({j, idx, spent, energy, noArm, crown, light, neck = 0.245, other = null}) => {
+export const BlockMan: React.FC<{j: J3; idx: number; spent: number; energy: number; noArm?: boolean; crown: boolean; light: string; neck?: number; other?: V3 | null; look?: V3 | null}> = ({j, idx, spent, energy, noArm, crown, light, neck = 0.245, other = null, look = null}) => {
   const w = (p: V3) => W3(p, [0, 0, 0], K3);
   const g = (c: string) => mixHex(c, '#7d8494', spent * 0.7);
   const base = g(BLOCK[idx]);
@@ -98,7 +118,7 @@ export const BlockMan: React.FC<{j: J3; idx: number; spent: number; energy: numb
       <Blk a={add(pel, mul(up, -0.045))} b={add(pel, mul(up, 0.035))} w={0.325} d={0.195} side={side} m={toon(g('#2a2630'))} />
       {/* neck and head */}
       <Blk a={shc} b={add(shc, mul(up, neck - 0.1))} w={0.1} d={0.1} side={side} m={mLimb} />
-      <Cube p={head} s={[0.29, 0.28, 0.27]} basis={[side, up, fwd]} m={mHead} />
+      <Cube p={head} s={[0.29, 0.28, 0.27]} basis={headBasis(side, up, fwd, head, look)} m={mHead} />
       {arms.map(([s, el, h], i) => (
         <React.Fragment key={`a${i}`}>
           <Blk a={s} b={el} w={0.095} d={0.095} side={side} m={mLimb} ext={0.05} />

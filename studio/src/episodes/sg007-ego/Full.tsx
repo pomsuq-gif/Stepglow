@@ -9,6 +9,8 @@ import {hit, K, SECONDS, shake} from './grid';
 import {CAST, TINT, tw, WALL} from './plan';
 import {clasp, PIN, solveR} from './rig';
 import {World} from './World';
+import {cam} from './shots';
+void 0;
 import {FlatFigs} from './flat2d';
 import {STY, StyCtx, type Sty} from './styles';
 
@@ -92,9 +94,10 @@ const follow = (t: number): C => {
 };
 
 const SHOT_END = SECONDS;
+export {camFollow};
 const W5 = tw(4);
 const wallW = WALL.x * K3;
-export const cam = (t: number): Cam => {
+const camFollow = (t: number): Cam => {
   let c: C;
   if (t < 1.6) {
     // the opening: wide on the arena, Ego walks in, the camera settles on table 1
@@ -153,54 +156,88 @@ const CAPS: [number, number, Part[], number?][] = [
 ];
 
 const CapCtx = React.createContext<React.CSSProperties>({});
+const F = {fontFamily: 'var(--capf)', fontWeight: 'var(--capw)' as unknown as number, WebkitTextStroke: 'var(--stroke)', paintOrder: 'stroke fill'} as React.CSSProperties;
+/** captions: plain words in white, the key word (in its colour) bigger; each part pops in a beat after the one before */
 const Caption: React.FC<{t: number}> = ({t}) => {
   const box = React.useContext(CapCtx);
   const c = CAPS.find(([a, b]) => t >= a && t < b);
   if (!c) return null;
-  const [a, b, parts, size = 62] = c;
-  const k = clamp((t - a) / 0.16);
-  const e = 1 - Math.pow(1 - k, 3);
-  const o = e * (1 - clamp((t - (b - 0.06)) / 0.06));
+  const [a, b, parts, size = 66] = c;
+  const out = 1 - clamp((t - (b - 0.08)) / 0.08);
   return (
-    <div style={{position: 'absolute', left: 540, top: 1470, transform: `translate(-50%, -50%) scale(${1 + 0.12 * (1 - e)})`, whiteSpace: 'pre', fontFamily: 'var(--capf)', fontWeight: 'var(--capw)' as unknown as number, WebkitTextStroke: 'var(--stroke)', paintOrder: 'stroke fill', fontSize: size, letterSpacing: '0.005em', opacity: o, textShadow: shadow}}>
-      <div style={{display: 'inline-block', ...box}}>
-      {parts.map(([s, col], i) => (
-        <span key={i} style={{color: col ?? 'var(--txt)', textShadow: col ? `var(--shd), 0 0 30px ${col}77` : 'var(--shd)'}}>
-          {s}
-        </span>
-      ))}
+    <div style={{position: 'absolute', left: 540, top: 1460, transform: 'translate(-50%, -50%)', whiteSpace: 'pre', ...F, fontSize: size, letterSpacing: '0.005em', opacity: out, textShadow: shadow}}>
+      <div style={{display: 'inline-flex', alignItems: 'baseline', ...box}}>
+        {parts.map(([w, col], n) => {
+          const k = clamp((t - a - n * 0.1) / 0.18);
+          const e = k < 1 ? 1 + 2.2 * Math.pow(k - 1, 3) + 1.2 * Math.pow(k - 1, 2) : 1;
+          const key = !!col;
+          return (
+            <span key={n} style={{display: 'inline-block', color: col ?? 'var(--txt)', fontSize: key ? size * 1.3 : size, opacity: clamp(k * 3), transform: `translateY(${(1 - clamp(k)) * 30}px) scale(${e})`, textShadow: key ? `var(--shd), 0 0 34px ${col}88` : 'var(--shd)'}}>
+              {w}
+            </span>
+          );
+        })}
       </div>
     </div>
   );
 };
 
+/** the title slams in on the first two beats, over the hook shot, high in the frame */
 const Title: React.FC<{t: number}> = ({t}) => {
-  const o = ss(t, 0.15, 0.4) * (1 - ss(t, K.t1 - 0.12, K.t1));
-  if (o <= 0) return null;
-  const k = ss(t, 0.15, 0.5);
+  const out = 1 - ss(t, K.t1 - 0.15, K.t1);
+  if (out <= 0) return null;
+  const k1 = clamp((t - 0.22) / 0.16);
+  const k2 = clamp((t - 0.64) / 0.16);
+  const k3 = clamp((t - 1.0) / 0.2);
+  const slam = (k: number) => (k < 1 ? 2.2 - 1.2 * k * k : 1);
   return (
-    <div style={{position: 'absolute', left: 540, top: 1440, transform: `translate(-50%, -50%) scale(${1.15 - 0.15 * k})`, textAlign: 'center', opacity: o, fontFamily: 'var(--capf)', fontWeight: 'var(--capw)' as unknown as number, WebkitTextStroke: 'var(--stroke)', paintOrder: 'stroke fill'}}>
-      <div style={{fontSize: 96, letterSpacing: '-0.01em', whiteSpace: 'pre', textShadow: shadow}}>
-        <span style={{color: TINT.ego, textShadow: `${shadow}, 0 0 40px ${TINT.ego}99`}}>Ego</span>
-        <span style={{color: '#f4f7ff'}}> vs everyone</span>
-      </div>
-      <div style={{fontSize: 34, letterSpacing: '0.32em', color: '#9fb0d6', marginTop: 8, textShadow: shadow}}>arm wrestling</div>
+    <div style={{position: 'absolute', left: 540, top: 330, transform: 'translate(-50%, -50%)', textAlign: 'center', opacity: out, ...F}}>
+      <div style={{fontSize: 190, lineHeight: 0.9, color: TINT.ego, opacity: clamp(k1 * 4), transform: `scale(${slam(k1)}) rotate(${-4 * (1 - k1)}deg)`, textShadow: `${shadow}, 0 0 60px ${TINT.ego}aa`}}>Ego</div>
+      <div style={{fontSize: 86, lineHeight: 1, color: '#f4f7ff', opacity: clamp(k2 * 4), transform: `scale(${slam(k2)})`, textShadow: shadow}}>vs everyone</div>
+      <div style={{fontFamily: 'var(--tagf)', fontWeight: 700, fontSize: 38, letterSpacing: '0.42em', color: '#c9d4ec', marginTop: 12, opacity: k3, textTransform: 'uppercase', textShadow: shadow}}>arm wrestling</div>
     </div>
   );
 };
 
+/** a quick score accent after the easy wins (the big ones have their own captions) */
+const SCORES: [number, string][] = [
+  [K.w1 + 0.32, '1 — 0'],
+  [K.w2 + 0.4, '2 — 0'],
+];
+const Score: React.FC<{t: number}> = ({t}) => (
+  <>
+    {SCORES.map(([at, s]) => {
+      const k = (t - at) / 0.9;
+      if (k < 0 || k > 1) return null;
+      const e = clamp(k / 0.18);
+      const o = Math.min(1, e * 3) * (1 - clamp((k - 0.75) / 0.25));
+      return (
+        <div key={at} style={{position: 'absolute', left: 540, top: 330, transform: `translate(-50%, -50%) scale(${e < 1 ? 1.8 - 0.8 * e : 1})`, opacity: o, ...F, fontSize: 150, color: TINT.ego, textShadow: `${shadow}, 0 0 50px ${TINT.ego}99`}}>
+          {s}
+        </div>
+      );
+    })}
+  </>
+);
+
+/** the end card: "Discipline" lands, then ">" — and "Ego" shrinks under it */
 const End: React.FC<{t: number}> = ({t}) => {
-  const k = ss(t, K.end, K.end + 0.3);
-  if (k <= 0) return null;
-  const k2 = ss(t, K.end + 0.5, K.end + 0.8);
+  const k1 = clamp((t - K.end) / 0.2);
+  if (k1 <= 0) return null;
+  const k2 = clamp((t - K.end - 0.25) / 0.18);
+  const k3 = clamp((t - K.end - 0.45) / 0.3);
+  const k4 = clamp((t - K.end - 0.9) / 0.25);
+  const bob = Math.sin((t - K.end) * 6) * 6 * k4;
   return (
     <>
-      <div style={{position: 'absolute', left: 540, top: 1380, transform: `translate(-50%, -50%) scale(${1.2 - 0.2 * k})`, opacity: k, whiteSpace: 'pre', fontFamily: 'var(--capf)', fontWeight: 'var(--capw)' as unknown as number, WebkitTextStroke: 'var(--stroke)', paintOrder: 'stroke fill', fontSize: 104, letterSpacing: '-0.01em'}}>
-        <span style={{color: TINT.dis, textShadow: `${shadow}, 0 0 40px ${TINT.dis}aa`}}>Discipline</span>
-        <span style={{color: '#f4f7ff', textShadow: shadow}}>{' > '}</span>
-        <span style={{color: TINT.ego, textShadow: `${shadow}, 0 0 40px ${TINT.ego}99`}}>Ego</span>
+      <div style={{position: 'absolute', left: 540, top: 1400, transform: 'translate(-50%, -50%)', textAlign: 'center', ...F}}>
+        <div style={{fontSize: 132, lineHeight: 1, color: TINT.dis, transform: `scale(${k1 < 1 ? 2 - k1 : 1})`, opacity: clamp(k1 * 3), textShadow: `${shadow}, 0 0 60px ${TINT.dis}cc`}}>Discipline</div>
+        <div style={{fontSize: 96, lineHeight: 1, whiteSpace: 'pre', opacity: clamp(k2 * 3)}}>
+          <span style={{color: '#f4f7ff', textShadow: shadow, display: 'inline-block', transform: `scale(${k2 < 1 ? 1.8 - 0.8 * k2 : 1})`}}>{'> '}</span>
+          <span style={{color: TINT.ego, display: 'inline-block', transform: `scale(${1 - 0.25 * k3})`, transformOrigin: '0 70%', textShadow: `${shadow}, 0 0 40px ${TINT.ego}88`}}>Ego</span>
+        </div>
       </div>
-      <div style={{position: 'absolute', left: 540, top: 1500, transform: 'translate(-50%, -50%)', opacity: k2, fontFamily: 'var(--capf)', fontWeight: 'var(--capw)' as unknown as number, WebkitTextStroke: 'var(--stroke)', paintOrder: 'stroke fill', fontSize: 54, color: '#f4f7ff', textShadow: shadow}}>Agree? ↓</div>
+      <div style={{position: 'absolute', left: 540, top: 1600 + bob, transform: 'translate(-50%, -50%)', opacity: k4, ...F, fontSize: 58, color: '#f4f7ff', textShadow: shadow}}>Agree? ↓</div>
     </>
   );
 };
@@ -370,6 +407,7 @@ export const SG007Full: React.FC<{withAudio?: boolean; style?: string}> = ({with
       <StyText sty={sty}>
         <Caption t={t} />
       </StyText>
+      <Score t={t} />
       <End t={t} />
       <AbsoluteFill style={{background: '#f2f6ff', opacity: flash}} />
       <AbsoluteFill style={{background: SG.bg.edge, opacity: darkness(t)}} />

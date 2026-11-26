@@ -110,7 +110,9 @@ export type StandOpts = {
   phase?: number;
   stride?: number;
   /** arms: down, up (fists in the air), hips, cross (arms folded), point (right arm out) */
-  arms?: 'down' | 'up' | 'hips' | 'fold' | 'swagger';
+  arms?: 'down' | 'up' | 'hips' | 'fold' | 'swagger' | 'box' | 'shrug' | 'stretch' | 'pump';
+  /** 0..1 for 'box' (which fist jabs) and 'pump' (fist up) */
+  beat?: number;
   lean?: number;
   /** chest out, leaning back a little */
   proud?: number;
@@ -141,6 +143,15 @@ export const standR = (o: StandOpts = {}): Rig => {
     const sx = i ? 1 : -1;
     const swing = -0.22 * st * s * (i ? -1 : 1);
     if (arms === 'up') return [sx * 0.34, shy + ARM * 0.9, 0.06];
+    const b = o.beat ?? 0;
+    if (arms === 'box') {
+      // guard at the chin, one fist snapping out on the beat
+      const jab = i ? Math.max(0, Math.sin(b * Math.PI * 2)) : Math.max(0, -Math.sin(b * Math.PI * 2));
+      return [sx * (0.12 - 0.06 * jab), shy + 0.08 + 0.04 * jab, 0.2 + 0.3 * jab];
+    }
+    if (arms === 'shrug') return [sx * 0.36, shy - 0.22, 0.2];
+    if (arms === 'stretch') return [sx * 0.2, shy + ARM * 0.95, -0.05];
+    if (arms === 'pump') return i ? [sx * 0.2, shy + ARM * (0.3 + 0.6 * b), 0.12] : [sx * 0.27, pel[1] + 0.06, 0.04];
     if (arms === 'hips') return [sx * 0.27, pel[1] + 0.06, 0.04];
     if (arms === 'fold') return [-sx * 0.1, shy - 0.17, 0.2];
     if (arms === 'swagger') return [sx * 0.3, shy - ARM * 0.88, 0.05 + swing * 1.3];
@@ -148,7 +159,10 @@ export const standR = (o: StandOpts = {}): Rig => {
   };
   const elbow = (i: number): V3 => {
     const sx = i ? 1 : -1;
-    if (arms === 'up') return [sx, -0.2, 0.3];
+    if (arms === 'up' || arms === 'stretch') return [sx, -0.2, 0.3];
+    if (arms === 'box') return [sx * 0.8, -1, 0.2];
+    if (arms === 'shrug') return [sx, -0.6, -0.4];
+    if (arms === 'pump') return i ? [sx, -0.5, 0.2] : [sx, 0, -0.5];
     if (arms === 'hips') return [sx, 0, -0.5];
     if (arms === 'fold') return [sx * 0.6, -1, 0.4];
     return [sx * 0.3, -0.3, -1];

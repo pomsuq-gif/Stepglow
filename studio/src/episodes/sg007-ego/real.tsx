@@ -5,7 +5,7 @@ import {RoomEnvironment} from 'three/examples/jsm/environments/RoomEnvironment.j
 import {rnd} from '../nc001-work-smart/anim';
 import type {V3} from '../nc001-work-smart/kit3d';
 import {mixHex} from '../nc001-work-smart/world';
-import {add, HB, K3, mul, W3, type J3} from '../sg003-same-bar/rig3';
+import {add, HB, K3, mul, W3, type J3, type Rig} from '../sg003-same-bar/rig3';
 import {CAST, TINTS, tw} from './plan';
 import {PEG, solveR, TOP, TY} from './rig';
 import {CartoonMan, type Design} from './cartoon';
@@ -500,6 +500,17 @@ const gripOther = (st: {rig: {hand: [V3, V3]}; noArm?: boolean}[], i: number): V
   return null;
 };
 
+/** who looks at whom: everyone standing watches Ego; Ego watches the opponent he is about to beat */
+const lookAt = (st: {rig: Rig; spent: number}[], i: number, t: number): V3 | null => {
+  const headW = (k: number) => W3(solveR(st[k].rig).head, [0, 0, 0], K3);
+  if (i === 0) {
+    const k = t < 4.95 ? 1 : t < 9.3 ? 2 : t < 16.5 ? 3 : t < 24.9 ? 4 : 5;
+    return t < KT.slam ? headW(k) : null;
+  }
+  if (st[i].spent > 0.4 || t > KT.slam + 0.4) return null;
+  return headW(0);
+};
+
 /** each opponent comes on at his turn, as in the reference (Obsession and Discipline with their spots in the dark) */
 const APPEAR = [0, 0, 0, 0, 16.72, KT.more];
 
@@ -514,8 +525,9 @@ export const RealScene: React.FC<{t: number; env: RealEnv; colored: boolean; des
       ))}
       {env === 'pro' ? <BlockFx t={t} /> : null}
       {env === 'pro' ? <ProFx t={t} st={st} /> : null}
+      {env === 'pro' ? <WinFx t={t} /> : null}
       {env === 'pro'
-        ? st.map((s, i) => t < APPEAR[i] ? null : <BlockMan key={i} other={gripOther(st, i)} j={solveR(s.rig)} idx={i} spent={s.spent} energy={s.energy} noArm={s.noArm} crown={i === 0 && t < 30.1} light={TINTS[i]} neck={neck} />)
+        ? st.map((s, i) => t < APPEAR[i] ? null : <BlockMan key={i} other={gripOther(st, i)} look={lookAt(st, i, t)} j={solveR(s.rig)} idx={i} spent={s.spent} energy={s.energy} noArm={s.noArm} crown={i === 0 && t < 30.1} light={TINTS[i]} neck={neck} />)
         : design
         ? st.map((s, i) => <CartoonMan key={i} j={solveR(s.rig)} design={design} idx={i} spent={s.spent} noArm={s.noArm} crown={i === 0 && t < 30.1} />)
         : st.map((s, i) => (
@@ -555,7 +567,7 @@ const CrowdBlocks: React.FC<{t: number}> = ({t}) => {
   );
   const bodyGeo = useMemo(() => new THREE.BoxGeometry(0.34, 0.3, 0.2), []);
   const headGeo = useMemo(() => new THREE.BoxGeometry(0.19, 0.18, 0.18), []);
-  const mat = useMemo(() => new THREE.MeshStandardMaterial({roughness: 0.85, color: '#c8c8d0'}), []);
+  const mat = useMemo(() => new THREE.MeshStandardMaterial({roughness: 0.9, color: '#6e6e7a'}), []);
   const refs = React.useRef<[THREE.InstancedMesh | null, THREE.InstancedMesh | null]>([null, null]);
   const m4 = new THREE.Matrix4();
   const col = new THREE.Color();
@@ -662,7 +674,7 @@ export const HallPro: React.FC<{t: number}> = ({t}) => {
   const board = std('#121620', 0.6, 0.2);
   const seat = std('#14244a', 0.7);
   const stand = std('#16181e', 0.9);
-  const screen = P('screen', () => new THREE.MeshBasicMaterial({color: new THREE.Color('#1a3a8a').multiplyScalar(1.4)}));
+  const screen = P('screen2', () => new THREE.MeshBasicMaterial({color: new THREE.Color('#0e1a3a')}));
   const led = (c: string) => P(`led${c}`, () => new THREE.MeshBasicMaterial({color: new THREE.Color(c).multiplyScalar(2.2)}));
   const z0 = -5.5;
   return (
@@ -688,7 +700,7 @@ export const HallPro: React.FC<{t: number}> = ({t}) => {
         <planeGeometry args={[22, 0.05]} />
       </mesh>
       {Array.from({length: 8}, (_, k) => (
-        <mesh key={k} position={[-10 + k * 2.4, 0.45, -17.13]} material={P(`panel${k}`, () => new THREE.MeshStandardMaterial({color: ['#c8202a', '#1e3e8a', '#f4c430', '#1e3e8a'][k % 4], roughness: 0.5, emissive: ['#c8202a', '#1e3e8a', '#f4c430', '#1e3e8a'][k % 4], emissiveIntensity: 0.25}))}>
+        <mesh key={k} position={[-10 + k * 2.4, 0.45, -17.13]} material={P(`panel${k}`, () => new THREE.MeshStandardMaterial({color: ['#c8202a', '#1e3e8a', '#f4c430', '#1e3e8a'][k % 4], roughness: 0.5, emissive: ['#c8202a', '#1e3e8a', '#f4c430', '#1e3e8a'][k % 4], emissiveIntensity: 0.04}))}>
           <planeGeometry args={[2.1, 0.55]} />
         </mesh>
       ))}
@@ -705,11 +717,6 @@ export const HallPro: React.FC<{t: number}> = ({t}) => {
       <mesh position={[1.1, 8.2, -25.08]} material={screen} visible={L.house > 0.3}>
         <planeGeometry args={[12.5, 4.0]} />
       </mesh>
-      {Array.from({length: 5}, (_, k) => (
-        <mesh key={k} position={[1.1 + (k - 2) * 2.2, 8.2, -25.06]} material={led(['#ef4b3f', '#f59a2e', '#3fc495', '#f2c531', '#9a6cf0'][k])}>
-          <planeGeometry args={[1.6, 1.6]} />
-        </mesh>
-      ))}
       {/* truss over the tables, a par can over each, two cool back lights */}
       <Truss a={[0.9, 4.8, 2.5]} b={[-3.6, 4.8, -16]} />
       <Truss a={[-1.2, 4.8, 2.5]} b={[-5.7, 4.8, -16]} />
@@ -718,18 +725,18 @@ export const HallPro: React.FC<{t: number}> = ({t}) => {
         return (
           <React.Fragment key={i}>
             <ParCan p={p} to={[c[0], 0, c[2]]} color="#ffe8c8" a={q(0.06 * L.spots[i])} />
-            <Spot p={p} target={[c[0], 0.6, c[2]]} color="#ffe6c4" intensity={6 * L.spots[i]} angle={0.5} shadow={i === 0 || i === 2 || i === 4} />
+            <Spot p={p} target={[c[0], 0.6, c[2]]} color="#ffe6c4" intensity={8 * L.spots[i]} angle={0.5} shadow={i === 0 || i === 2 || i === 4} />
           </React.Fragment>
         );
       })}
       {[0, 1].map((x, k) => (
         <React.Fragment key={k}>
           <ParCan p={[trussX(-5 - 6 * k, 1), 4.56, -5 - 6 * k]} to={[-1 - 1.5 * k, 0, -4 - 7 * k]} color="#5a8aff" a={q(0.05 * L.house)} />
-          <Spot p={[trussX(-5 - 6 * k, 1), 4.56, -5 - 6 * k]} target={[-1 - 1.5 * k, 0.8, -4 - 7 * k]} color="#6a96ff" intensity={4 * L.house} angle={0.7} shadow={false} />
+          <Spot p={[trussX(-5 - 6 * k, 1), 4.56, -5 - 6 * k]} target={[-1 - 1.5 * k, 0.8, -4 - 7 * k]} color="#6a96ff" intensity={7 * L.house} angle={0.7} shadow={false} />
         </React.Fragment>
       ))}
       <Spot p={[1.1, 3, 6]} target={[1.1, 0.8, -2]} color="#ffd8b0" intensity={1.6 * L.house} angle={0.6} shadow={false} />
-      <hemisphereLight args={['#8aa0d8', '#3a2414', 0.06 + 0.24 * L.house]} />
+      <hemisphereLight args={['#8aa0d8', '#3a2414', 0.03 + 0.12 * L.house]} />
       <Spot p={[WALL.x * K3 + 1.2, 4.4, WALL.z * K3 + 0.6]} target={[WALL.x * K3 + 0.3, 0.4, WALL.z * K3]} color="#ffe6c4" intensity={5 * L.house * (t > KT.slam ? 1 : 0.4)} angle={0.5} shadow={false} />
       {/* the side board Ego is thrown into */}
       <Bx p={[WALL.x * K3 - 0.07, 0.45, WALL.z * K3 + 0.4]} s={[0.12, 0.9, 3.4]} m={board} />
@@ -921,7 +928,7 @@ const FlameAura: React.FC<{t: number; j: J3; amt: number; color: string; seed: n
       const ang = R(sd + 4) * Math.PI * 2;
       const out = (0.09 + 0.12 * R(sd + 5)) * (0.7 + 0.5 * a);
       const rise = ph * (0.25 + 0.3 * R(sd + 6)) * (0.6 + 0.6 * a);
-      const size = (0.16 + 0.14 * R(sd + 7)) * (1 - 0.55 * ph) * (0.7 + 0.5 * a);
+      const size = (0.13 + 0.11 * R(sd + 7)) * (1 - 0.55 * ph) * (0.7 + 0.4 * a);
       const x = base[0] + Math.cos(ang) * out + Math.sin(t * 5 + i) * 0.02;
       const y = base[1] + rise + (i % segs.length >= 9 ? 0.12 : 0);
       const z = base[2] + Math.sin(ang) * out * 0.6;
@@ -935,4 +942,88 @@ const FlameAura: React.FC<{t: number; j: J3; amt: number; color: string; seed: n
     if (im.instanceColor) im.instanceColor.needsUpdate = true;
   });
   return <instancedMesh ref={ref} args={[flameGeo, flameMat(color), FL_N]} frustumCulled={false} renderOrder={6} />;
+};
+
+/* ───────────── what happens at a win: a shock ring across the table top, sparks off the fists, dust where the loser lands ───────────── */
+
+const ringGeo = new THREE.RingGeometry(0.85, 1, 64);
+const WINS: {at: number; i: number; col: string; land: number; spot: V3}[] = [
+  {at: KT.w1, i: 0, col: '#ff6a4a', land: KT.w1 + 0.18 + 0.5, spot: [1.05, 0, -1.1]},
+  {at: KT.w2, i: 1, col: '#ff6a4a', land: KT.w2 + 1.0, spot: [1.0, 0, -1.05]},
+  {at: KT.w3, i: 2, col: '#ff4a2a', land: KT.w3 + 0.16 + 0.6, spot: [1.15, 0, -1.15]},
+  {at: KT.broke, i: 3, col: '#b77cff', land: KT.broke + 0.9, spot: [1.05, 0, -0.6]},
+  {at: KT.slam, i: 4, col: '#7fd8ff', land: KT.slam + 0.36, spot: [0, 0, 0]},
+];
+const WinFx: React.FC<{t: number}> = ({t}) => {
+  const out: React.ReactNode[] = [];
+  WINS.forEach((w, n) => {
+    const c = tw(w.i);
+    const top = TY * K3 + 0.02;
+    // the ring: two quick waves across the table and the floor
+    [0, 0.08].forEach((d, r) => {
+      const k = (t - w.at - d) / 0.5;
+      if (k < 0 || k > 1) return;
+      const e = 1 - Math.pow(1 - k, 3);
+      const R0 = (r ? 1.6 : 0.6) * e + 0.05;
+      out.push(
+        <mesh key={`r${n}${r}`} geometry={ringGeo} position={[c[0], r ? 0.02 : top, c[2]]} rotation={[-Math.PI / 2, 0, 0]} scale={[R0, R0, 1]} renderOrder={9} material={P(`ring${w.col}`, () => new THREE.MeshBasicMaterial({color: new THREE.Color(w.col).multiplyScalar(2), transparent: true, depthWrite: false, opacity: 1}))} visible={true}>
+        </mesh>,
+      );
+      const m = P(`ring${w.col}`, () => new THREE.MeshBasicMaterial());
+      (m as THREE.MeshBasicMaterial).opacity = 1 - k;
+    });
+    // sparks: hot little cubes off the clasp
+    const st = t - w.at;
+    if (st >= 0 && st < 0.7 && w.i < 4) {
+      const cl = W3([c[0] / K3, 0, c[2] / K3], [0, 0, 0], K3);
+      for (let s = 0; s < 14; s++) {
+        const a = R(n * 50 + s) * Math.PI * 2;
+        const v = 1.2 + 1.6 * R(n * 50 + s + 7);
+        const x = cl[0] + Math.cos(a) * v * st;
+        const z = cl[2] + Math.sin(a) * v * st * 0.6;
+        const y = top + 0.15 + (1.4 + R(s + 3)) * st - 4.9 * st * st;
+        if (y < 0) continue;
+        const sz = 0.03 * (1 - st / 0.7);
+        out.push(<Bx key={`s${n}-${s}`} p={[x, y, z]} s={[sz, sz, sz]} m={P(`spark${w.col}`, () => new THREE.MeshBasicMaterial({color: new THREE.Color(s % 3 ? w.col : '#fff4d8').multiplyScalar(2.2)}))} cast={false} />);
+      }
+    }
+  });
+  return (
+    <>
+      {out}
+      {WINS.map((w, n) => {
+        const base = n === 4 ? [WALL.x * K3 + 0.3, 0, WALL.z * K3 - 0.05] as V3 : add(tw(w.i), mul(w.spot, K3));
+        return <Dust key={`d${n}`} t={t} at={w.land} p={base} seed={n * 31} />;
+      })}
+    </>
+  );
+};
+
+/** a puff of floor dust where something heavy lands (painted, not light) */
+const Dust: React.FC<{t: number; at: number; p: V3; seed: number}> = ({t, at, p, seed}) => {
+  const ref = React.useRef<THREE.InstancedMesh>(null);
+  const N = 22;
+  const dt = t - at;
+  React.useLayoutEffect(() => {
+    const im = ref.current;
+    if (!im) return;
+    const m4 = new THREE.Matrix4();
+    const col = new THREE.Color();
+    for (let i = 0; i < N; i++) {
+      const a = R(seed + i) * Math.PI * 2;
+      const v = 0.6 + 0.9 * R(seed + i + 3);
+      const k = Math.max(0, dt);
+      const r = v * (1 - Math.exp(-k * 3)) * 0.6;
+      const size = (0.18 + 0.2 * R(seed + i + 5)) * (0.6 + k);
+      m4.makeScale(size, size, size).setPosition(p[0] + Math.cos(a) * r, 0.05 + 0.25 * k * R(seed + i + 9), p[2] + Math.sin(a) * r * 0.7);
+      im.setMatrixAt(i, m4);
+      const al = dt < 0 || dt > 1.2 ? 0 : 0.35 * Math.sin(Math.PI * Math.min(1, dt / 1.2)) * (0.6 + 0.4 * R(seed + i + 11));
+      col.setRGB(al, 0, 0);
+      im.setColorAt(i, col);
+    }
+    im.instanceMatrix.needsUpdate = true;
+    if (im.instanceColor) im.instanceColor.needsUpdate = true;
+  });
+  if (dt < 0 || dt > 1.2) return null;
+  return <instancedMesh ref={ref} args={[flameGeo, flameMat('#cbbfae'), N]} frustumCulled={false} renderOrder={6} />;
 };

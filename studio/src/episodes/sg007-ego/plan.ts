@@ -160,7 +160,7 @@ const egoRig = (t: number): Rig => {
   if (t < GRIP.m4[0]) return into(3, 18.0, GRIP.m4[0], 4)!;
   if (t < K.broke + 0.35) return g(4, 0.8, {lean: 34});
   // "Is that all?"
-  if (t < 24.9) return rigAt(t, [[K.broke + 0.35, g(4, 0.5, {lean: 34})], [K.broke + 0.75, at(egoSpot(3), P2, {proud: 1})], [24.65, at(egoSpot(3), 0.7, {proud: 1.4, arms: 'hips'})]]);
+  if (t < 24.9) return rigAt(t, [[K.broke + 0.35, g(4, 0.5, {lean: 34})], [K.broke + 0.75, at(egoSpot(3), P2, {proud: 1})], [24.65, at(egoSpot(3), 0.7, {proud: 1.2, arms: 'shrug'})]]);
   if (t < 26.4) return walk(t, 24.9, 26.4, egoSpot(3), egoSpot(4), {arms: 'swagger', proud: 1.2}, via(3));
   if (t < GRIP.m5[0]) return rigAt(t, [[26.4, at(egoSpot(4), P2, {proud: 1.2})], [26.5, at(egoSpot(4), P2, {proud: 1.2})], [GRIP.m5[0], gripAt(4, {side: -1, phi: 0, t})]]);
   if (t < K.slam) {
@@ -221,8 +221,9 @@ const motState = (t: number): State => {
   const i = 0;
   const m = 1;
   let rig: Rig;
-  if (t < 1.32) rig = ready(i, t, 1);
-  else if (t < GRIP.m1[0]) rig = rigAt(t, [[1.32, ready(i, t, 1)], [GRIP.m1[0], og(m, GRIP.m1[0])]]);
+  const hype = (tt: number) => at(add3(oppSpot(i), [0, Math.max(0, Math.sin((tt * Math.PI * 2) / (BEAT * 2))) * 0.035, 0]), -P2 - 0.3, {proud: 0.6, arms: 'pump', beat: Math.max(0, Math.sin((tt * Math.PI * 2) / (BEAT * 2)))});
+  if (t < 1.32) rig = hype(t);
+  else if (t < GRIP.m1[0]) rig = rigAt(t, [[1.32, hype(1.32)], [GRIP.m1[0], og(m, GRIP.m1[0])]]);
   else if (t < K.w1 + 0.18) rig = og(m, t, {strain: 0.6 * (1 - ss(t, 2.6, 3.4)), lean: 28 - 6 * ss(t, 2.6, 3.6), slouch: 0.4 * ss(t, 2.8, 3.8)});
   else rig = thrown(t, K.w1 + 0.18, og(m, K.w1 + 0.18, {slouch: 0.4}), i, place(lie({face: 'down', arms: 'push', knee: 0.6}), add3(TP[i], [1.05, 0, -1.1]), Math.PI - 0.5), 0.5);
   const s = S0(rig, TINT.mot, 1.5 - 1.3 * ss(t, 2.4, 3.7));
@@ -238,7 +239,13 @@ const lazState = (t: number): State => {
   const m = 2;
   let rig: Rig;
   const slouchy = (tt: number) => at(add3(oppSpot(i), [0, 0, 0]), -P2, {lean: 10, crouch: 0.03, arms: 'down', head: [0, -0.05, 0.02]});
-  if (t < 6.2) rig = slouchy(t);
+  if (t < 6.2)
+    rig = rigAt(t, [
+      [4.9, slouchy(t)],
+      [5.25, at(oppSpot(i), -P2, {lean: -10, arms: 'stretch', head: [0, 0.02, -0.06]})],
+      [5.75, at(oppSpot(i), -P2, {lean: -12, arms: 'stretch', head: [0, 0.03, -0.07]})],
+      [6.15, slouchy(t)],
+    ]);
   else if (t < GRIP.m2[0]) rig = rigAt(t, [[6.2, slouchy(t)], [GRIP.m2[0], og(m, GRIP.m2[0], {slouch: 1, peg: 0.2, lean: 22})]]);
   else if (t < K.w2 + 0.25) rig = og(m, t, {slouch: 1, peg: 0.2, lean: 22, nod: 0.6});
   else
@@ -256,8 +263,9 @@ const talState = (t: number): State => {
   const i = 2;
   const m = 3;
   let rig: Rig;
-  if (t < 10.4) rig = ready(i, t, 0.5);
-  else if (t < GRIP.m3[0]) rig = rigAt(t, [[10.4, ready(i, t, 0.5)], [GRIP.m3[0], og(m, GRIP.m3[0])]]);
+  const cool = (tt: number) => at(add3(oppSpot(i), [0, 0.006 * Math.sin(tt * 2.2), 0]), -P2 - 0.2, {proud: 0.8, arms: 'fold'});
+  if (t < 10.4) rig = cool(t);
+  else if (t < GRIP.m3[0]) rig = rigAt(t, [[10.4, cool(10.4)], [GRIP.m3[0], og(m, GRIP.m3[0])]]);
   else if (t < K.w3 + 0.16) {
     const win = ss(t, 12.2, 13.2);
     rig = og(m, t, {strain: 0.5 + 0.3 * win, lean: 30 + 4 * win});
@@ -274,8 +282,9 @@ const obsState = (t: number): State => {
   const i = 3;
   const m = 4;
   let rig: Rig;
-  if (t < 18.0) rig = ready(i, t, 1.6);
-  else if (t < GRIP.m4[0]) rig = rigAt(t, [[18.0, ready(i, t, 1.6)], [GRIP.m4[0], og(m, GRIP.m4[0])]]);
+  const box = (tt: number) => at(add3(oppSpot(i), [0, Math.max(0, Math.sin((tt * Math.PI * 2) / BEAT)) * 0.025, 0]), -P2 - 0.15, {lean: 10, crouch: 0.06, arms: 'box', beat: tt / (BEAT * 2)});
+  if (t < 18.0) rig = box(t);
+  else if (t < GRIP.m4[0]) rig = rigAt(t, [[18.0, box(18.0)], [GRIP.m4[0], og(m, GRIP.m4[0])]]);
   else if (t < K.broke + 0.12) rig = og(m, t, {strain: 1, lean: 36});
   else
     rig = rigAt(t, [
